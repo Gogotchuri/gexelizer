@@ -1,6 +1,8 @@
-package main
+package gexelizer
 
-import "github.com/go-the-way/exl"
+import (
+	"github.com/go-the-way/exl"
+)
 
 type Item struct {
 	Name  string  `excel:"name"`
