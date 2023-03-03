@@ -3,6 +3,7 @@ package gexelizer
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -45,6 +46,9 @@ func analyzeType(t reflect.Type) (typeInfo, error) {
 	if err != nil {
 		return typeInfo{}, err
 	}
+	sort.Slice(info.fields, func(i, j int) bool {
+		return info.fields[i].order < info.fields[j].order
+	})
 	return info, nil
 }
 
@@ -64,8 +68,8 @@ func isAllowed(t reflect.Type, depth int) error {
 	if depth == 0 && t.Kind() != reflect.Struct {
 		return fmt.Errorf("unsupported type: %s", t.Kind())
 	}
-	// For depth 1, we allow structs, pointers to structs AND slices
-	if depth == 1 && t.Kind() != reflect.Struct && t.Kind() != reflect.Slice {
+	// For depth 1, we allow structs, pointers to structs + slices and primitives
+	if depth == 1 && t.Kind() != reflect.Struct && t.Kind() != reflect.Slice && isPrimitive(t.Kind()) {
 		return fmt.Errorf("unsupported type: %s", t.Kind())
 	}
 	return nil
@@ -83,6 +87,7 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 	if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
 		t = t.Elem()
 	}
+	exportedIndex := 0
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		//Expand embedded anonymous struct and compositions
@@ -99,6 +104,7 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 			for k, v := range embeddedInfo.namesToIndex {
 				info.namesToIndex[k] = v
 			}
+			exportedIndex += len(embeddedInfo.fields)
 			continue
 		}
 		//Skip unexported field
@@ -109,7 +115,7 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 		if isFieldIgnored(field) {
 			continue
 		}
-		fi, err := analyzeField(field, i, depth)
+		fi, err := analyzeField(field, i, exportedIndex, depth)
 		if err != nil {
 			return typeInfo{}, err
 		}
@@ -121,13 +127,14 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 			}
 			info.primaryKeyIndex = fi.fieldIndex
 		}
+		exportedIndex++
 	}
 	return info, nil
 }
 
-func analyzeField(field reflect.StructField, i, depth int) (fieldInfo, error) {
+func analyzeField(field reflect.StructField, fieldIndex, exportedIndex, depth int) (fieldInfo, error) {
 	// Get field order
-	order := getFieldOrder(field, i)
+	order := getFieldOrder(field, exportedIndex)
 	// Get field name
 	name := getFieldName(field)
 	// Get field kind
@@ -148,7 +155,7 @@ func analyzeField(field reflect.StructField, i, depth int) (fieldInfo, error) {
 	return fieldInfo{
 		isPrimaryKey: isPrimaryKey,
 		order:        order,
-		fieldIndex:   i,
+		fieldIndex:   fieldIndex,
 		name:         name,
 		kind:         kind,
 		structInfo:   structInfo,
@@ -158,7 +165,7 @@ func analyzeField(field reflect.StructField, i, depth int) (fieldInfo, error) {
 func isPrimaryKey(field reflect.StructField) bool {
 	segments := strings.Split(field.Tag.Get(DefaultTag), ",")
 	for _, segment := range segments {
-		if strings.TrimSpace(segment) == "pk" {
+		if strings.TrimSpace(segment) == "primary" {
 			return true
 		}
 	}
@@ -173,14 +180,14 @@ func getKind(t reflect.Type) (kind, error) {
 		return kindSlice, nil
 	case reflect.Ptr:
 		switch t.Elem().Kind() {
-		case reflect.Ptr | reflect.Slice:
+		case reflect.Ptr, reflect.Slice:
 			return -1, fmt.Errorf("pointer to pointer is not supported")
 		default:
 			return getPointedKind(t.Elem().Kind())
 		}
-	case reflect.Bool | reflect.Int | reflect.Int8 | reflect.Int16 | reflect.Int32 | reflect.Int64 |
-		reflect.Uint | reflect.Uint8 | reflect.Uint16 | reflect.Uint32 | reflect.Uint64 | reflect.Float32 |
-		reflect.Float64 | reflect.String:
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32,
+		reflect.Float64, reflect.String:
 		return kindPrimitive, nil
 	default:
 		return -1, fmt.Errorf("unsupported type: %s", t.Kind())
@@ -191,9 +198,9 @@ func getPointedKind(v reflect.Kind) (kind, error) {
 	switch v {
 	case reflect.Struct:
 		return kindStructPtr, nil
-	case reflect.Bool | reflect.Int | reflect.Int8 | reflect.Int16 | reflect.Int32 | reflect.Int64 |
-		reflect.Uint | reflect.Uint8 | reflect.Uint16 | reflect.Uint32 | reflect.Uint64 | reflect.Float32 |
-		reflect.Float64 | reflect.String:
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32,
+		reflect.Float64, reflect.String:
 		return kindPrimitivePtr, nil
 	default:
 		return -1, fmt.Errorf("unsupported type: %s", v)
@@ -238,4 +245,10 @@ func isFieldIgnored(field reflect.StructField) bool {
 
 func isUnexported(field reflect.StructField) bool {
 	return field.PkgPath != ""
+}
+
+func isPrimitive(k reflect.Kind) bool {
+	return k == reflect.Bool || k == reflect.Int || k == reflect.Int8 || k == reflect.Int16 || k == reflect.Int32 || k == reflect.Int64 ||
+		k == reflect.Uint || k == reflect.Uint8 || k == reflect.Uint16 || k == reflect.Uint32 || k == reflect.Uint64 || k == reflect.Float32 ||
+		k == reflect.Float64 || k == reflect.String
 }

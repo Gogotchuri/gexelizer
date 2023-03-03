@@ -71,7 +71,11 @@ func (w *TypeWriter[T]) WriteToBuffer() (*bytes.Buffer, error) {
 
 func (w *TypeWriter[T]) analyzeType() error {
 	var t T
-	analyzeType(reflect.TypeOf(t))
+	info, err := analyzeType(reflect.TypeOf(t))
+	if err != nil {
+		return err
+	}
+	fmt.Println(info)
 	return nil
 }
 

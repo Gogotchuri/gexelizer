@@ -3,8 +3,12 @@ module github.com/gogotchuri/gexelizer
 go 1.20
 
 require (
+	github.com/go-the-way/exl v1.2.2
+	github.com/xuri/excelize/v2 v2.7.0
+)
+
+require (
 	github.com/frankban/quicktest v1.11.2 // indirect
-	github.com/go-the-way/exl v1.2.2 // indirect
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
@@ -17,7 +21,6 @@ require (
 	github.com/shabbyrobe/xmlwriter v0.0.0-20200208144257-9fca06d00ffa // indirect
 	github.com/tealeg/xlsx/v3 v3.2.4 // indirect
 	github.com/xuri/efp v0.0.0-20220603152613-6918739fd470 // indirect
-	github.com/xuri/excelize/v2 v2.7.0 // indirect
 	github.com/xuri/nfp v0.0.0-20220409054826-5e722a1d9e22 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
