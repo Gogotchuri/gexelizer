@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"reflect"
 )
 
 type TypeWriter[T any] struct {
@@ -48,7 +49,6 @@ func (w *TypeWriter[T]) Write(data []T) error {
 	}
 	if w.nextRowToWrite == w.options.HeaderRow {
 		w.nextRowToWrite = w.options.DataStartRow
-
 		if err := w.writeHeaders(); err != nil {
 			return err
 		}
@@ -70,7 +70,8 @@ func (w *TypeWriter[T]) WriteToBuffer() (*bytes.Buffer, error) {
 }
 
 func (w *TypeWriter[T]) analyzeType() error {
-	//TODO: implement
+	var t T
+	analyzeType(reflect.TypeOf(t))
 	return nil
 }
 
