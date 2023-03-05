@@ -46,9 +46,6 @@ func analyzeType(t reflect.Type) (typeInfo, error) {
 	if err != nil {
 		return typeInfo{}, err
 	}
-	sort.Slice(info.fields, func(i, j int) bool {
-		return info.fields[i].order < info.fields[j].order
-	})
 	return info, nil
 }
 
@@ -92,19 +89,20 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 		field := t.Field(i)
 		//Expand embedded anonymous struct and compositions
 		if field.Anonymous {
-			embeddedInfo, err := analyzeStruct(field.Type, depth) //we don't need to increase depth here, because we embed the struct fields
-			if err != nil {
-				return typeInfo{}, err
-			}
-			info.fields = append(info.fields, embeddedInfo.fields...)
-			if info.primaryKeyIndex == -1 {
-				info.primaryKeyIndex = embeddedInfo.primaryKeyIndex
-			}
-			//Merge namesToIndex
-			for k, v := range embeddedInfo.namesToIndex {
-				info.namesToIndex[k] = v
-			}
-			exportedIndex += len(embeddedInfo.fields)
+			//TODO issues with embedded structs, should add later
+			//embeddedInfo, err := analyzeStruct(field.Type, depth) //we don't need to increase depth here, because we embed the struct fields
+			//if err != nil {
+			//	return typeInfo{}, err
+			//}
+			//info.fields = append(info.fields, embeddedInfo.fields...)
+			//if info.primaryKeyIndex == -1 {
+			//	info.primaryKeyIndex = embeddedInfo.primaryKeyIndex
+			//}
+			////Merge namesToIndex
+			//for k, v := range embeddedInfo.namesToIndex {
+			//	info.namesToIndex[k] = v
+			//}
+			//exportedIndex += len(embeddedInfo.fields)
 			continue
 		}
 		//Skip unexported field
@@ -129,6 +127,9 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 		}
 		exportedIndex++
 	}
+	sort.Slice(info.fields, func(i, j int) bool {
+		return info.fields[i].order < info.fields[j].order
+	})
 	return info, nil
 }
 
@@ -146,6 +147,12 @@ func analyzeField(field reflect.StructField, fieldIndex, exportedIndex, depth in
 	// if kind is struct, analyze it
 	var structInfo *typeInfo
 	if kind == kindStruct || kind == kindStructPtr || kind == kindSlice {
+		if kind == kindSlice {
+			// For slices, we only allow slices of structs
+			if field.Type.Elem().Kind() != reflect.Struct {
+				return fieldInfo{}, fmt.Errorf("unsupported slice type: %s", field.Type.Elem().Kind())
+			}
+		}
 		s, err := analyzeStruct(field.Type, depth+1)
 		if err != nil {
 			return fieldInfo{}, err

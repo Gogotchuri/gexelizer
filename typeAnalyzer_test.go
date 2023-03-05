@@ -342,7 +342,6 @@ func TestTypeAnalyzer_TagIgnore(t *testing.T) {
 }
 
 func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
-	//TODO issues with embedded structs and structs in general i suspect
 	type es struct {
 		One string `gex:"one"`
 		Two string `gex:"two"`
@@ -357,28 +356,16 @@ func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 		primaryKeyIndex: -1,
 		fields: []fieldInfo{
 			{
-				name:       "one",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 0,
-			},
-			{
-				name:       "two",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
-			{
 				name:       "three",
 				kind:       kindPrimitive,
-				order:      2,
-				fieldIndex: 2,
+				order:      0,
+				fieldIndex: 1,
 			},
 			{
 				name:       "four",
 				kind:       kindPrimitive,
-				order:      3,
-				fieldIndex: 3,
+				order:      1,
+				fieldIndex: 2,
 			},
 		},
 	}
@@ -386,9 +373,204 @@ func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := typeInfosEqual(expected, info); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTypeAnalyzer_StructField(t *testing.T) {
+	type sf struct {
+		One string `gex:"one"`
+		Two string `gex:"two"`
+	}
+	type structField struct {
+		Sf    sf
+		Three string `gex:"three"`
+		Four  string `gex:"four"`
+	}
+	expected := typeInfo{
+		isPtr:           false,
+		primaryKeyIndex: -1,
+		fields: []fieldInfo{
+			{
+				name:       "Sf",
+				kind:       kindStruct,
+				order:      0,
+				fieldIndex: 0,
+				structInfo: &typeInfo{
+					isPtr:           false,
+					primaryKeyIndex: -1,
+					fields: []fieldInfo{
+						{
+							name:       "one",
+							kind:       kindPrimitive,
+							order:      0,
+							fieldIndex: 0,
+						},
+						{
+							name:       "two",
+							kind:       kindPrimitive,
+							order:      1,
+							fieldIndex: 1,
+						},
+					},
+				},
+			},
+			{
+				name:       "three",
+				kind:       kindPrimitive,
+				order:      1,
+				fieldIndex: 1,
+			},
+			{
+				name:       "four",
+				kind:       kindPrimitive,
+				order:      2,
+				fieldIndex: 2,
+			},
+		},
+	}
+	info, err := analyzeType(reflect.TypeOf(structField{}))
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("%+v", info)
 	if err := typeInfosEqual(expected, info); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestTypeAnalyzer_StructFieldPtr(t *testing.T) {
+	type sf struct {
+		One string `gex:"one"`
+		Two string `gex:"two"`
+	}
+	type structFieldPtr struct {
+		Sf    *sf
+		Three string `gex:"three"`
+		Four  string `gex:"four"`
+	}
+	expected := typeInfo{
+		isPtr:           false,
+		primaryKeyIndex: -1,
+		fields: []fieldInfo{
+			{
+				name:       "Sf",
+				kind:       kindStructPtr,
+				order:      0,
+				fieldIndex: 0,
+				structInfo: &typeInfo{
+					isPtr:           true,
+					primaryKeyIndex: -1,
+					fields: []fieldInfo{
+						{
+							name:       "one",
+							kind:       kindPrimitive,
+							order:      0,
+							fieldIndex: 0,
+						},
+						{
+							name:       "two",
+							kind:       kindPrimitive,
+							order:      1,
+							fieldIndex: 1,
+						},
+					},
+				},
+			},
+			{
+				name:       "three",
+				kind:       kindPrimitive,
+				order:      1,
+				fieldIndex: 1,
+			},
+			{
+				name:       "four",
+				kind:       kindPrimitive,
+				order:      2,
+				fieldIndex: 2,
+			},
+		},
+	}
+	info, err := analyzeType(reflect.TypeOf(structFieldPtr{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v", info)
+	if err := typeInfosEqual(expected, info); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTypeAnalyzer_StructFieldOrderTag(t *testing.T) {
+	type sf struct {
+		Two string `gex:"two,order:1"`
+		One string `gex:"one,order:0"`
+	}
+	type structFieldOrderTag struct {
+		Sf    sf     `gex:"sf,order:0"`
+		Three string `gex:"three"`
+		Four  string `gex:"four"`
+	}
+	expected := typeInfo{
+		isPtr:           false,
+		primaryKeyIndex: -1,
+		fields: []fieldInfo{
+			{
+				name:       "sf",
+				kind:       kindStruct,
+				order:      0,
+				fieldIndex: 0,
+				structInfo: &typeInfo{
+					isPtr:           false,
+					primaryKeyIndex: -1,
+					fields: []fieldInfo{
+						{
+							name:       "one",
+							kind:       kindPrimitive,
+							order:      0,
+							fieldIndex: 1,
+						},
+						{
+							name:       "two",
+							kind:       kindPrimitive,
+							order:      1,
+							fieldIndex: 0,
+						},
+					},
+				},
+			},
+			{
+				name:       "three",
+				kind:       kindPrimitive,
+				order:      1,
+				fieldIndex: 1,
+			},
+			{
+				name:       "four",
+				kind:       kindPrimitive,
+				order:      2,
+				fieldIndex: 2,
+			},
+		},
+	}
+	info, err := analyzeType(reflect.TypeOf(structFieldOrderTag{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v\n%+v\n", info, info.fields[0].structInfo)
+	if err := typeInfosEqual(expected, info); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTypeAnalyzer_PrimitiveSlice(t *testing.T) {
+	type primitiveSlice struct {
+		Slice []string `gex:""`
+	}
+	_, err := analyzeType(reflect.TypeOf(primitiveSlice{}))
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
 
