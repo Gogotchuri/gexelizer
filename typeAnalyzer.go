@@ -20,13 +20,19 @@ const (
 	kindStructPtr
 )
 
+type typeAnalyzer struct {
+	// expandedFieldIndex current expanded field index
+	currentExpandedFieldIndex int
+}
+
 type fieldInfo struct {
-	isPrimaryKey bool
-	order        int
-	fieldIndex   int
-	name         string
-	kind         kind
-	structInfo   *typeInfo
+	isPrimaryKey       bool
+	order              int
+	fieldIndex         int
+	expandedFieldIndex int
+	name               string
+	kind               kind
+	structInfo         *typeInfo
 }
 
 type typeInfo struct {
@@ -37,42 +43,24 @@ type typeInfo struct {
 }
 
 func analyzeType(t reflect.Type) (typeInfo, error) {
+	ta := typeAnalyzer{}
+	return ta.analyzeType(t)
+}
+
+func (ta typeAnalyzer) analyzeType(t reflect.Type) (typeInfo, error) {
 	isStruct := t.Kind() == reflect.Struct
 	isStructPtr := t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct
 	if !isStruct && !isStructPtr {
 		return typeInfo{}, fmt.Errorf("unsupported type: %s", t.Kind())
 	}
-	info, err := analyzeStruct(t, 0)
+	info, err := ta.analyzeStruct(t, 0)
 	if err != nil {
 		return typeInfo{}, err
 	}
 	return info, nil
 }
 
-func isAllowed(t reflect.Type, depth int) error {
-	// Max depth is 2, because we don't support deep struct composition, which cant be represented in excel
-	if depth > 1 {
-		return fmt.Errorf("unsupported struct composition, depth: %d", depth)
-	}
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		// We don't support pointer to slice or pointer to pointer
-		if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
-			return fmt.Errorf("pointer to the type is not allowed: %s", t.Kind())
-		}
-	}
-	// For depth 0, we only allow structs or pointers to structs
-	if depth == 0 && t.Kind() != reflect.Struct {
-		return fmt.Errorf("unsupported type: %s", t.Kind())
-	}
-	// For depth 1, we allow structs, pointers to structs + slices and primitives
-	if depth == 1 && t.Kind() != reflect.Struct && t.Kind() != reflect.Slice && isPrimitive(t.Kind()) {
-		return fmt.Errorf("unsupported type: %s", t.Kind())
-	}
-	return nil
-}
-
-func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
+func (ta typeAnalyzer) analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 	if err := isAllowed(t, depth); err != nil {
 		return typeInfo{}, err
 	}
@@ -113,7 +101,7 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 		if isFieldIgnored(field) {
 			continue
 		}
-		fi, err := analyzeField(field, i, exportedIndex, depth)
+		fi, err := ta.analyzeField(field, i, exportedIndex, depth)
 		if err != nil {
 			return typeInfo{}, err
 		}
@@ -133,7 +121,7 @@ func analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
 	return info, nil
 }
 
-func analyzeField(field reflect.StructField, fieldIndex, exportedIndex, depth int) (fieldInfo, error) {
+func (ta typeAnalyzer) analyzeField(field reflect.StructField, fieldIndex, exportedIndex, depth int) (fieldInfo, error) {
 	// Get field order
 	order := getFieldOrder(field, exportedIndex)
 	// Get field name
@@ -153,19 +141,22 @@ func analyzeField(field reflect.StructField, fieldIndex, exportedIndex, depth in
 				return fieldInfo{}, fmt.Errorf("unsupported slice type: %s", field.Type.Elem().Kind())
 			}
 		}
-		s, err := analyzeStruct(field.Type, depth+1)
+		s, err := ta.analyzeStruct(field.Type, depth+1)
 		if err != nil {
 			return fieldInfo{}, err
 		}
 		structInfo = &s
 	}
+	// Increment currentExpandedFieldIndex
+	ta.currentExpandedFieldIndex++
 	return fieldInfo{
-		isPrimaryKey: isPrimaryKey,
-		order:        order,
-		fieldIndex:   fieldIndex,
-		name:         name,
-		kind:         kind,
-		structInfo:   structInfo,
+		isPrimaryKey:       isPrimaryKey,
+		order:              order,
+		expandedFieldIndex: ta.currentExpandedFieldIndex,
+		fieldIndex:         fieldIndex,
+		name:               name,
+		kind:               kind,
+		structInfo:         structInfo,
 	}, nil
 }
 
@@ -258,4 +249,27 @@ func isPrimitive(k reflect.Kind) bool {
 	return k == reflect.Bool || k == reflect.Int || k == reflect.Int8 || k == reflect.Int16 || k == reflect.Int32 || k == reflect.Int64 ||
 		k == reflect.Uint || k == reflect.Uint8 || k == reflect.Uint16 || k == reflect.Uint32 || k == reflect.Uint64 || k == reflect.Float32 ||
 		k == reflect.Float64 || k == reflect.String
+}
+
+func isAllowed(t reflect.Type, depth int) error {
+	// Max depth is 2, because we don't support deep struct composition, which cant be represented in excel
+	if depth > 1 {
+		return fmt.Errorf("unsupported struct composition, depth: %d", depth)
+	}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		// We don't support pointer to slice or pointer to pointer
+		if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
+			return fmt.Errorf("pointer to the type is not allowed: %s", t.Kind())
+		}
+	}
+	// For depth 0, we only allow structs or pointers to structs
+	if depth == 0 && t.Kind() != reflect.Struct {
+		return fmt.Errorf("unsupported type: %s", t.Kind())
+	}
+	// For depth 1, we allow structs, pointers to structs + slices and primitives
+	if depth == 1 && t.Kind() != reflect.Struct && t.Kind() != reflect.Slice && isPrimitive(t.Kind()) {
+		return fmt.Errorf("unsupported type: %s", t.Kind())
+	}
+	return nil
 }
