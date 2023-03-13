@@ -248,6 +248,35 @@ func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+func TestTypeAnalyzer_PrefixedEmbeddedStruct(t *testing.T) {
+	type es struct {
+		One string `gex:"one"`
+		Two string `gex:"two"`
+	}
+	type embeddedStruct struct {
+		es    `gex:"prefix:es_"`
+		Three string `gex:"three"`
+		Four  string `gex:"four"`
+	}
+	expected := typeInfo{
+		t:              reflect.TypeOf(embeddedStruct{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"es_one", "es_two", "three", "four"},
+		nameToField: map[string]fieldInfo{
+			"es_one": {name: "es_one", order: 0, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"es_two": {name: "es_two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"three":  {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"four":   {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
+		},
+	}
+	info, err := analyzeType(reflect.TypeOf(embeddedStruct{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := typeInfosEqual(expected, info); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestTypeAnalyzer_StructField(t *testing.T) {
 	type sf struct {

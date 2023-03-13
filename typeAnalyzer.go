@@ -210,7 +210,7 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 }
 
 func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k kind) string {
-	prefix := prevPrefix
+	prefix := ""
 	segments := strings.Split(field.Tag.Get(DefaultTag), ",")
 	noPrefix := false
 	for _, segment := range segments {
@@ -221,11 +221,11 @@ func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k ki
 			prefix = prevPrefix + strings.TrimSpace(strings.TrimPrefix(segment, "prefix:"))
 		}
 	}
-	if noPrefix || field.Anonymous {
+	if noPrefix || (field.Anonymous && prefix == "") {
 		return prevPrefix
 	}
 	if k != kindPrimitive && k != kindPrimitivePtr {
-		if prefix == "" || prefix == prevPrefix {
+		if prefix == "" {
 			prefix = prevPrefix + name + "."
 		}
 		return prefix
