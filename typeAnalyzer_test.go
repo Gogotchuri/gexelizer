@@ -11,16 +11,10 @@ func TestTypeAnalyzer_OneField(t *testing.T) {
 		One string
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "One",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 0,
-			},
-		},
+		t:              reflect.TypeOf(oneField{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"One"},
+		nameToField:    map[string]fieldInfo{"One": {name: "One", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive}},
 	}
 	info, err := analyzeType(reflect.TypeOf(oneField{}))
 	if err != nil {
@@ -37,21 +31,12 @@ func TestTypeAnalyzer_TwoFields(t *testing.T) {
 		Two string
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "One",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 0,
-			},
-			{
-				name:       "Two",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
+		t:              reflect.TypeOf(twoFields{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"One", "Two"},
+		nameToField: map[string]fieldInfo{
+			"One": {name: "One", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
+			"Two": {name: "Two", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(twoFields{}))
@@ -70,16 +55,10 @@ func TestTypeAnalyzer_UnexportedFields(t *testing.T) {
 		Three string
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "Three",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 2,
-			},
-		},
+		t:              reflect.TypeOf(unexportedFields{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"Three"},
+		nameToField:    map[string]fieldInfo{"Three": {name: "Three", order: 0, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive}},
 	}
 	info, err := analyzeType(reflect.TypeOf(unexportedFields{}))
 	if err != nil {
@@ -109,93 +88,24 @@ func TestTypeAnalyzer_PrimitiveFields(t *testing.T) {
 		Float64 float64
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "Bool",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 0,
-			},
-			{
-				name:       "String",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
-			{
-				name:       "Int",
-				kind:       kindPrimitive,
-				order:      2,
-				fieldIndex: 2,
-			},
-			{
-				name:       "Int8",
-				kind:       kindPrimitive,
-				order:      3,
-				fieldIndex: 3,
-			},
-			{
-				name:       "Int16",
-				kind:       kindPrimitive,
-				order:      4,
-				fieldIndex: 4,
-			},
-			{
-				name:       "Int32",
-				kind:       kindPrimitive,
-				order:      5,
-				fieldIndex: 5,
-			},
-			{
-				name:       "Int64",
-				kind:       kindPrimitive,
-				order:      6,
-				fieldIndex: 6,
-			},
-			{
-				name:       "Uint",
-				kind:       kindPrimitive,
-				order:      7,
-				fieldIndex: 7,
-			},
-			{
-				name:       "Uint8",
-				kind:       kindPrimitive,
-				order:      8,
-				fieldIndex: 8,
-			},
-			{
-				name:       "Uint16",
-				kind:       kindPrimitive,
-				order:      9,
-				fieldIndex: 9,
-			},
-			{
-				name:       "Uint32",
-				kind:       kindPrimitive,
-				order:      10,
-				fieldIndex: 10,
-			},
-			{
-				name:       "Uint64",
-				kind:       kindPrimitive,
-				order:      11,
-				fieldIndex: 11,
-			},
-			{
-				name:       "Float32",
-				kind:       kindPrimitive,
-				order:      12,
-				fieldIndex: 12,
-			},
-			{
-				name:       "Float64",
-				kind:       kindPrimitive,
-				order:      13,
-				fieldIndex: 13,
-			},
+		t:              reflect.TypeOf(primitiveFields{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"Bool", "String", "Int", "Int8", "Int16", "Int32", "Int64", "Uint", "Uint8", "Uint16", "Uint32", "Uint64", "Float32", "Float64"},
+		nameToField: map[string]fieldInfo{
+			"Bool":    {name: "Bool", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
+			"String":  {name: "String", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"Int":     {name: "Int", order: 2, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
+			"Int8":    {name: "Int8", order: 3, isPrimaryKey: false, index: []int{3}, kind: kindPrimitive},
+			"Int16":   {name: "Int16", order: 4, isPrimaryKey: false, index: []int{4}, kind: kindPrimitive},
+			"Int32":   {name: "Int32", order: 5, isPrimaryKey: false, index: []int{5}, kind: kindPrimitive},
+			"Int64":   {name: "Int64", order: 6, isPrimaryKey: false, index: []int{6}, kind: kindPrimitive},
+			"Uint":    {name: "Uint", order: 7, isPrimaryKey: false, index: []int{7}, kind: kindPrimitive},
+			"Uint8":   {name: "Uint8", order: 8, isPrimaryKey: false, index: []int{8}, kind: kindPrimitive},
+			"Uint16":  {name: "Uint16", order: 9, isPrimaryKey: false, index: []int{9}, kind: kindPrimitive},
+			"Uint32":  {name: "Uint32", order: 10, isPrimaryKey: false, index: []int{10}, kind: kindPrimitive},
+			"Uint64":  {name: "Uint64", order: 11, isPrimaryKey: false, index: []int{11}, kind: kindPrimitive},
+			"Float32": {name: "Float32", order: 12, isPrimaryKey: false, index: []int{12}, kind: kindPrimitive},
+			"Float64": {name: "Float64", order: 13, isPrimaryKey: false, index: []int{13}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(primitiveFields{}))
@@ -213,21 +123,12 @@ func TestTypeAnalyzer_TagName(t *testing.T) {
 		One string `gex:"two,"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "one",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 0,
-			},
-			{
-				name:       "two",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
+		t:              reflect.TypeOf(tagName{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"one", "two"},
+		nameToField: map[string]fieldInfo{
+			"one": {name: "one", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
+			"two": {name: "two", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(tagName{}))
@@ -245,21 +146,12 @@ func TestTypeAnalyzer_TagOrder(t *testing.T) {
 		One string `gex:"one,order:0"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "one",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 1,
-			},
-			{
-				name:       "two",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 0,
-			},
+		t:              reflect.TypeOf(tagOrder{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"one", "two"},
+		nameToField: map[string]fieldInfo{
+			"one": {name: "one", order: 0, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"two": {name: "two", order: 1, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(tagOrder{}))
@@ -277,22 +169,12 @@ func TestTypeAnalyzer_TagPrimaryKey(t *testing.T) {
 		One string `gex:"one"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: 0,
-		fields: []fieldInfo{
-			{
-				name:         "two",
-				isPrimaryKey: true,
-				kind:         kindPrimitive,
-				order:        0,
-				fieldIndex:   0,
-			},
-			{
-				name:       "one",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
+		t:              reflect.TypeOf(tagPrimaryKey{}),
+		primaryKeyName: "two",
+		orderedColumns: []string{"two", "one"},
+		nameToField: map[string]fieldInfo{
+			"two": {name: "two", order: 0, isPrimaryKey: true, index: []int{0}, kind: kindPrimitive},
+			"one": {name: "one", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(tagPrimaryKey{}))
@@ -321,15 +203,11 @@ func TestTypeAnalyzer_TagIgnore(t *testing.T) {
 		One string `gex:"one"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "one",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 1,
-			},
+		t:              reflect.TypeOf(tagIgnore{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"one"},
+		nameToField: map[string]fieldInfo{
+			"one": {name: "one", order: 0, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(tagIgnore{}))
@@ -352,21 +230,14 @@ func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 		Four  string `gex:"four"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "three",
-				kind:       kindPrimitive,
-				order:      0,
-				fieldIndex: 1,
-			},
-			{
-				name:       "four",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 2,
-			},
+		t:              reflect.TypeOf(embeddedStruct{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"one", "two", "three", "four"},
+		nameToField: map[string]fieldInfo{
+			"one":   {name: "one", order: 0, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"two":   {name: "two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"three": {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"four":  {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(embeddedStruct{}))
@@ -389,52 +260,83 @@ func TestTypeAnalyzer_StructField(t *testing.T) {
 		Four  string `gex:"four"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "Sf",
-				kind:       kindStruct,
-				order:      0,
-				fieldIndex: 0,
-				structInfo: &typeInfo{
-					isPtr:           false,
-					primaryKeyIndex: -1,
-					fields: []fieldInfo{
-						{
-							name:       "one",
-							kind:       kindPrimitive,
-							order:      0,
-							fieldIndex: 0,
-						},
-						{
-							name:       "two",
-							kind:       kindPrimitive,
-							order:      1,
-							fieldIndex: 1,
-						},
-					},
-				},
-			},
-			{
-				name:       "three",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
-			{
-				name:       "four",
-				kind:       kindPrimitive,
-				order:      2,
-				fieldIndex: 2,
-			},
+		t:              reflect.TypeOf(structField{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"Sf.one", "Sf.two", "three", "four"},
+		nameToField: map[string]fieldInfo{
+			"Sf.one": {name: "Sf.one", order: 0, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"Sf.two": {name: "Sf.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"three":  {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"four":   {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(structField{}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("%+v", info)
+	if err := typeInfosEqual(expected, info); err != nil {
+		t.Fatal(err)
+	}
+}
+func TestTypeAnalyzer_NamedStructField(t *testing.T) {
+	type sf struct {
+		One string `gex:"one"`
+		Two string `gex:"two"`
+	}
+	type structField struct {
+		Sf    sf     `gex:"f"`
+		Three string `gex:"three"`
+		Four  string `gex:"four"`
+	}
+	expected := typeInfo{
+		t:              reflect.TypeOf(structField{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"f.one", "f.two", "three", "four"},
+		nameToField: map[string]fieldInfo{
+			"f.one": {name: "f.one", order: 0, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"f.two": {name: "f.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"three": {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"four":  {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
+		},
+	}
+	info, err := analyzeType(reflect.TypeOf(structField{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := typeInfosEqual(expected, info); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTypeAnalyzer_StructFieldPrefixes(t *testing.T) {
+	type sf struct {
+		One string `gex:"one"`
+		Two string `gex:"two"`
+	}
+	type structField struct {
+		Sf    sf     `gex:"f,prefix:foo."`
+		Sf1   sf     `gex:"sf,noprefix"`
+		Three string `gex:"three"`
+		Four  string `gex:"four"`
+	}
+	expected := typeInfo{
+		t:              reflect.TypeOf(structField{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"foo.one", "foo.two", "one", "two", "three", "four"},
+		nameToField: map[string]fieldInfo{
+			"foo.one": {name: "foo.one", order: 0, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"foo.two": {name: "foo.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"one":     {name: "one", order: 2, isPrimaryKey: false, index: []int{1, 0}, kind: kindPrimitive},
+			"two":     {name: "two", order: 3, isPrimaryKey: false, index: []int{1, 1}, kind: kindPrimitive},
+			"three":   {name: "three", order: 4, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
+			"four":    {name: "four", order: 5, isPrimaryKey: false, index: []int{3}, kind: kindPrimitive},
+		},
+	}
+	info, err := analyzeType(reflect.TypeOf(structField{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%+v\n", info.orderedColumns)
 	if err := typeInfosEqual(expected, info); err != nil {
 		t.Fatal(err)
 	}
@@ -442,7 +344,7 @@ func TestTypeAnalyzer_StructField(t *testing.T) {
 
 func TestTypeAnalyzer_StructFieldPtr(t *testing.T) {
 	type sf struct {
-		One string `gex:"one"`
+		One string `gex:"one,primary"`
 		Two string `gex:"two"`
 	}
 	type structFieldPtr struct {
@@ -451,45 +353,14 @@ func TestTypeAnalyzer_StructFieldPtr(t *testing.T) {
 		Four  string `gex:"four"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "Sf",
-				kind:       kindStructPtr,
-				order:      0,
-				fieldIndex: 0,
-				structInfo: &typeInfo{
-					isPtr:           true,
-					primaryKeyIndex: -1,
-					fields: []fieldInfo{
-						{
-							name:       "one",
-							kind:       kindPrimitive,
-							order:      0,
-							fieldIndex: 0,
-						},
-						{
-							name:       "two",
-							kind:       kindPrimitive,
-							order:      1,
-							fieldIndex: 1,
-						},
-					},
-				},
-			},
-			{
-				name:       "three",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
-			{
-				name:       "four",
-				kind:       kindPrimitive,
-				order:      2,
-				fieldIndex: 2,
-			},
+		t:              reflect.TypeOf(structFieldPtr{}),
+		primaryKeyName: "Sf.one",
+		orderedColumns: []string{"Sf.one", "Sf.two", "three", "four"},
+		nameToField: map[string]fieldInfo{
+			"Sf.one": {name: "Sf.one", order: 0, isPrimaryKey: true, index: []int{0, 0}, kind: kindPrimitive},
+			"Sf.two": {name: "Sf.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"three":  {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"four":   {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(structFieldPtr{}))
@@ -513,52 +384,21 @@ func TestTypeAnalyzer_StructFieldOrderTag(t *testing.T) {
 		Four  string `gex:"four"`
 	}
 	expected := typeInfo{
-		isPtr:           false,
-		primaryKeyIndex: -1,
-		fields: []fieldInfo{
-			{
-				name:       "sf",
-				kind:       kindStruct,
-				order:      0,
-				fieldIndex: 0,
-				structInfo: &typeInfo{
-					isPtr:           false,
-					primaryKeyIndex: -1,
-					fields: []fieldInfo{
-						{
-							name:       "one",
-							kind:       kindPrimitive,
-							order:      0,
-							fieldIndex: 1,
-						},
-						{
-							name:       "two",
-							kind:       kindPrimitive,
-							order:      1,
-							fieldIndex: 0,
-						},
-					},
-				},
-			},
-			{
-				name:       "three",
-				kind:       kindPrimitive,
-				order:      1,
-				fieldIndex: 1,
-			},
-			{
-				name:       "four",
-				kind:       kindPrimitive,
-				order:      2,
-				fieldIndex: 2,
-			},
+		t:              reflect.TypeOf(structFieldOrderTag{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"sf.one", "sf.two", "three", "four"},
+		nameToField: map[string]fieldInfo{
+			"sf.one": {name: "sf.one", order: 0, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"sf.two": {name: "sf.two", order: 1, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"three":  {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"four":   {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(structFieldOrderTag{}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("%+v\n%+v\n", info, info.fields[0].structInfo)
+	t.Logf("%+v\n", info)
 	if err := typeInfosEqual(expected, info); err != nil {
 		t.Fatal(err)
 	}
@@ -574,43 +414,48 @@ func TestTypeAnalyzer_PrimitiveSlice(t *testing.T) {
 	}
 }
 
+func TestTypeAnalyzer_SliceStruct(t *testing.T) {
+	type sliceStruct struct {
+		One string `gex:"one"`
+	}
+	type sliceStructSlice struct {
+		Slice []sliceStruct `gex:""`
+	}
+	expected := typeInfo{
+		t:              reflect.TypeOf(sliceStructSlice{}),
+		primaryKeyName: "",
+		orderedColumns: []string{"Slice", "Slice.one"},
+		nameToField: map[string]fieldInfo{
+			"Slice":     {name: "Slice", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindSlice},
+			"Slice.one": {name: "Slice.one", order: 1, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+		},
+	}
+	info, err := analyzeType(reflect.TypeOf(sliceStructSlice{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v\n", info)
+	if err := typeInfosEqual(expected, info); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // typeInfoEqual compares two typeInfo structs and returns nil if they are equal, error otherwise, with expected and got values
 func typeInfosEqual(a, b typeInfo) error {
-	if a.isPtr != b.isPtr {
-		return fmt.Errorf("isPtr: expected %t, got %t", a.isPtr, b.isPtr)
+	if len(a.nameToField) != len(b.nameToField) {
+		return fmt.Errorf("fields length: expected %d, got %d", len(a.nameToField), len(b.nameToField))
 	}
-	if len(a.fields) != len(b.fields) {
-		return fmt.Errorf("fields length: expected %d, got %d", len(a.fields), len(b.fields))
+	if a.primaryKeyName != b.primaryKeyName {
+		return fmt.Errorf("primaryKeyIndex: expected %s, got %s", a.primaryKeyName, b.primaryKeyName)
 	}
-	if a.primaryKeyIndex != b.primaryKeyIndex {
-		return fmt.Errorf("primaryKeyIndex: expected %d, got %d", a.primaryKeyIndex, b.primaryKeyIndex)
+	for i, c := range a.orderedColumns {
+		if b.orderedColumns[i] != c {
+			return fmt.Errorf("orderedColumns: expected %s, got %s", c, b.orderedColumns[i])
+		}
 	}
-	for i := range a.fields {
-		if a.fields[i].name != b.fields[i].name {
-			return fmt.Errorf("fields[%d].name: expected %s, got %s", i, a.fields[i].name, b.fields[i].name)
-		}
-		if a.fields[i].kind != b.fields[i].kind {
-			return fmt.Errorf("fields[%d].kind: expected %d, got %d", i, a.fields[i].kind, b.fields[i].kind)
-		}
-		if a.fields[i].isPrimaryKey != b.fields[i].isPrimaryKey {
-			return fmt.Errorf("fields[%d].isPrimaryKey: expected %t, got %t", i, a.fields[i].isPrimaryKey, b.fields[i].isPrimaryKey)
-		}
-		if a.fields[i].order != b.fields[i].order {
-			return fmt.Errorf("fields[%d].order: expected %d, got %d", i, a.fields[i].order, b.fields[i].order)
-		}
-		if a.fields[i].fieldIndex != b.fields[i].fieldIndex {
-			return fmt.Errorf("fields[%d].fieldIndex: expected %d, got %d", i, a.fields[i].fieldIndex, b.fields[i].fieldIndex)
-		}
-		if a.fields[i].structInfo != nil && b.fields[i].structInfo != nil {
-			if err := typeInfosEqual(*a.fields[i].structInfo, *b.fields[i].structInfo); err != nil {
-				return fmt.Errorf("fields[%d].structInfo: %s", i, err)
-			}
-		}
-		if a.fields[i].structInfo == nil && b.fields[i].structInfo != nil {
-			return fmt.Errorf("fields[%d].structInfo: expected nil, got %+v", i, b.fields[i].structInfo)
-		}
-		if a.fields[i].structInfo != nil && b.fields[i].structInfo == nil {
-			return fmt.Errorf("fields[%d].structInfo: expected %+v, got nil", i, a.fields[i].structInfo)
+	for k, v := range a.nameToField {
+		if !b.nameToField[k].equal(v) {
+			return fmt.Errorf("nameToField: expected %+v, got %+v", v, b.nameToField[k])
 		}
 	}
 	return nil

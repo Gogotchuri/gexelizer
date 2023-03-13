@@ -20,144 +20,217 @@ const (
 	kindStructPtr
 )
 
-type typeAnalyzer struct {
-	// expandedFieldIndex current expanded field index
-	currentExpandedFieldIndex int
+type fieldInfo struct {
+	name         string
+	order        int
+	nextPrefix   string
+	isPrimaryKey bool
+	index        []int
+	kind         kind
 }
 
-type fieldInfo struct {
-	isPrimaryKey       bool
-	order              int
-	fieldIndex         int
-	expandedFieldIndex int
-	name               string
-	kind               kind
-	structInfo         *typeInfo
+func (i fieldInfo) equal(b fieldInfo) bool {
+	if len(i.index) != len(b.index) {
+		return false
+	}
+	for k := 0; k < len(i.index) && k < len(b.index); k++ {
+		if i.index[k] != b.index[k] {
+			return false
+		}
+	}
+	return i.name == b.name && i.order == b.order && i.nextPrefix == b.nextPrefix && i.isPrimaryKey == b.isPrimaryKey && i.kind == b.kind
 }
 
 type typeInfo struct {
-	primaryKeyIndex int
-	isPtr           bool
-	fields          []fieldInfo
-	namesToIndex    map[string]int
+	t              reflect.Type
+	primaryKeyName string
+	orderedColumns []string
+	nameToField    map[string]fieldInfo
+}
+
+func (info typeInfo) sortColumns() {
+	sort.Slice(info.orderedColumns, func(a, b int) bool {
+		nameA := info.orderedColumns[a]
+		nameB := info.orderedColumns[b]
+		infoA := info.nameToField[nameA]
+		infoB := info.nameToField[nameB]
+		if infoA.isPrimaryKey && !infoB.isPrimaryKey {
+			return true
+		}
+		if !infoA.isPrimaryKey && infoB.isPrimaryKey {
+			return false
+		}
+		if len(infoA.index) > len(infoB.index) {
+			return infoA.index[len(infoB.index)-1] < infoB.index[len(infoB.index)-1]
+		}
+		if len(infoA.index) < len(infoB.index) {
+			return infoA.index[len(infoA.index)-1] < infoB.index[len(infoA.index)-1]
+		}
+		for k := 0; k < len(infoA.index); k++ {
+			if k == len(infoA.index)-1 {
+				return infoA.order < infoB.order
+			}
+			if infoA.index[k] != infoB.index[k] {
+				return infoA.index[k] < infoB.index[k]
+			}
+		}
+		return infoA.order < infoB.order
+	})
+	for i, name := range info.orderedColumns {
+		fi := info.nameToField[name]
+		fi.order = i
+		fi.nextPrefix = ""
+		info.nameToField[name] = fi
+	}
 }
 
 func analyzeType(t reflect.Type) (typeInfo, error) {
-	ta := typeAnalyzer{}
-	return ta.analyzeType(t)
-}
-
-func (ta typeAnalyzer) analyzeType(t reflect.Type) (typeInfo, error) {
 	isStruct := t.Kind() == reflect.Struct
 	isStructPtr := t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct
 	if !isStruct && !isStructPtr {
 		return typeInfo{}, fmt.Errorf("unsupported type: %s", t.Kind())
 	}
-	info, err := ta.analyzeStruct(t, 0)
+	if isStructPtr {
+		t = t.Elem()
+	}
+	info, err := analyzeStruct(t)
 	if err != nil {
 		return typeInfo{}, err
 	}
 	return info, nil
 }
 
-func (ta typeAnalyzer) analyzeStruct(t reflect.Type, depth int) (typeInfo, error) {
-	if err := isAllowed(t, depth); err != nil {
-		return typeInfo{}, err
-	}
+type toTraverse struct {
+	t            reflect.Type
+	indexPrefix  []int
+	columnPrefix string
+}
+
+func analyzeStruct(t reflect.Type) (typeInfo, error) {
 	info := typeInfo{
-		primaryKeyIndex: -1,
-		isPtr:           t.Kind() == reflect.Ptr,
-		namesToIndex:    make(map[string]int),
+		t:           t,
+		nameToField: make(map[string]fieldInfo),
 	}
-	if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
-		t = t.Elem()
-	}
-	exportedIndex := 0
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		//Expand embedded anonymous struct and compositions
-		if field.Anonymous {
-			//TODO issues with embedded structs, should add later
-			//embeddedInfo, err := analyzeStruct(field.Type, depth) //we don't need to increase depth here, because we embed the struct fields
-			//if err != nil {
-			//	return typeInfo{}, err
-			//}
-			//info.fields = append(info.fields, embeddedInfo.fields...)
-			//if info.primaryKeyIndex == -1 {
-			//	info.primaryKeyIndex = embeddedInfo.primaryKeyIndex
-			//}
-			////Merge namesToIndex
-			//for k, v := range embeddedInfo.namesToIndex {
-			//	info.namesToIndex[k] = v
-			//}
-			//exportedIndex += len(embeddedInfo.fields)
-			continue
-		}
-		//Skip unexported field
-		if isUnexported(field) {
-			continue
-		}
-		//Skip ignored field
-		if isFieldIgnored(field) {
-			continue
-		}
-		fi, err := ta.analyzeField(field, i, exportedIndex, depth)
-		if err != nil {
-			return typeInfo{}, err
-		}
-		info.fields = append(info.fields, fi)
-		info.namesToIndex[fi.name] = fi.fieldIndex
-		if fi.isPrimaryKey {
-			if info.primaryKeyIndex != -1 {
-				return typeInfo{}, fmt.Errorf("multiple primary keys are not allowed")
+	queue := []toTraverse{{t: t}}
+	encounteredSlice := false
+	for len(queue) > 0 {
+		currentNode := queue[0]
+		queue = queue[1:]
+		currentType := currentNode.t
+		for i := 0; i < currentType.NumField(); i++ {
+			field := currentType.Field(i)
+			//Skip unexported field
+			if isUnexported(field) && !field.Anonymous {
+				continue
 			}
-			info.primaryKeyIndex = fi.fieldIndex
+			//Skip ignored field
+			if isFieldIgnored(field) {
+				continue
+			}
+			fi, err := analyzeField(field, currentNode, i)
+			if err != nil {
+				return typeInfo{}, err
+			}
+			if fi.isPrimaryKey {
+				if info.primaryKeyName != "" {
+					return typeInfo{}, fmt.Errorf("multiple primary keys are not allowed")
+				}
+				info.primaryKeyName = fi.name
+			}
+
+			if fi.kind == kindSlice {
+				if encounteredSlice {
+					return typeInfo{}, fmt.Errorf("only one slice is allowed")
+				}
+				encounteredSlice = true
+				t := field.Type.Elem()
+				if t.Kind() == reflect.Ptr {
+					t = t.Elem()
+				}
+				if t.Kind() == reflect.Struct {
+					queue = append(queue, toTraverse{
+						t:            t,
+						indexPrefix:  fi.index,
+						columnPrefix: fi.nextPrefix,
+					})
+				}
+			} else if fi.kind == kindStruct || fi.kind == kindStructPtr {
+				t := field.Type
+				if fi.kind == kindStructPtr {
+					t = t.Elem()
+				}
+				queue = append(queue, toTraverse{
+					t:            t,
+					indexPrefix:  fi.index,
+					columnPrefix: fi.nextPrefix,
+				})
+				continue
+			}
+			if _, ok := info.nameToField[fi.name]; ok {
+				return typeInfo{}, fmt.Errorf("duplicate field name: %s", fi.name)
+			}
+			info.nameToField[fi.name] = fi
+			info.orderedColumns = append(info.orderedColumns, fi.name) //To be sorted later
 		}
-		exportedIndex++
 	}
-	sort.Slice(info.fields, func(i, j int) bool {
-		return info.fields[i].order < info.fields[j].order
-	})
+	info.sortColumns()
 	return info, nil
 }
 
-func (ta typeAnalyzer) analyzeField(field reflect.StructField, fieldIndex, exportedIndex, depth int) (fieldInfo, error) {
+func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fieldInfo, error) {
+	index := make([]int, 0, len(currentNode.indexPrefix)+len(field.Index))
+	index = append(index, currentNode.indexPrefix...)
+	index = append(index, field.Index...)
 	// Get field order
-	order := getFieldOrder(field, exportedIndex)
+	order := getFieldOrder(field, i)
 	// Get field name
 	name := getFieldName(field)
 	// Get field kind
-	kind, err := getKind(field.Type)
+	typeKind, err := getKind(field.Type)
 	if err != nil {
 		return fieldInfo{}, err
 	}
 	isPrimaryKey := isPrimaryKey(field)
-	// if kind is struct, analyze it
-	var structInfo *typeInfo
-	if kind == kindStruct || kind == kindStructPtr || kind == kindSlice {
-		if kind == kindSlice {
-			// For slices, we only allow slices of structs
-			if field.Type.Elem().Kind() != reflect.Struct {
-				return fieldInfo{}, fmt.Errorf("unsupported slice type: %s", field.Type.Elem().Kind())
-			}
+	if typeKind == kindSlice {
+		// For slices, we only allow slices of structs
+		if field.Type.Elem().Kind() != reflect.Struct {
+			return fieldInfo{}, fmt.Errorf("unsupported slice type: %s", field.Type.Elem().Kind())
 		}
-		s, err := ta.analyzeStruct(field.Type, depth+1)
-		if err != nil {
-			return fieldInfo{}, err
-		}
-		structInfo = &s
 	}
-	// Increment currentExpandedFieldIndex
-	ta.currentExpandedFieldIndex++
+	// Get field prefix
+	prefix := getNextFieldPrefix(field, name, currentNode.columnPrefix, typeKind)
 	return fieldInfo{
-		isPrimaryKey:       isPrimaryKey,
-		order:              order,
-		expandedFieldIndex: ta.currentExpandedFieldIndex,
-		fieldIndex:         fieldIndex,
-		name:               name,
-		kind:               kind,
-		structInfo:         structInfo,
+		isPrimaryKey: isPrimaryKey,
+		order:        order,
+		name:         currentNode.columnPrefix + name,
+		kind:         typeKind,
+		index:        index,
+		nextPrefix:   prefix, //For nested structs
 	}, nil
+}
+
+func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k kind) string {
+	prefix := prevPrefix
+	segments := strings.Split(field.Tag.Get(DefaultTag), ",")
+	noPrefix := false
+	for _, segment := range segments {
+		if strings.TrimSpace(segment) == "noprefix" {
+			noPrefix = true
+		}
+		if strings.HasPrefix(strings.TrimSpace(segment), "prefix:") {
+			prefix = prevPrefix + strings.TrimSpace(strings.TrimPrefix(segment, "prefix:"))
+		}
+	}
+	if noPrefix {
+		return prevPrefix
+	}
+	if k != kindPrimitive && k != kindPrimitivePtr {
+		if prefix == "" || prefix == prevPrefix {
+			prefix = prevPrefix + name + "."
+		}
+		return prefix
+	}
+	return prevPrefix
 }
 
 func isPrimaryKey(field reflect.StructField) bool {
@@ -215,7 +288,7 @@ func getFieldOrder(field reflect.StructField, i int) int {
 		if !strings.HasPrefix(o, "order:") {
 			continue
 		}
-		order, err := strconv.Atoi(o[6:])
+		order, err := strconv.Atoi(strings.TrimPrefix(o, "order:"))
 		if err != nil {
 			return i
 		}
@@ -243,33 +316,4 @@ func isFieldIgnored(field reflect.StructField) bool {
 
 func isUnexported(field reflect.StructField) bool {
 	return field.PkgPath != ""
-}
-
-func isPrimitive(k reflect.Kind) bool {
-	return k == reflect.Bool || k == reflect.Int || k == reflect.Int8 || k == reflect.Int16 || k == reflect.Int32 || k == reflect.Int64 ||
-		k == reflect.Uint || k == reflect.Uint8 || k == reflect.Uint16 || k == reflect.Uint32 || k == reflect.Uint64 || k == reflect.Float32 ||
-		k == reflect.Float64 || k == reflect.String
-}
-
-func isAllowed(t reflect.Type, depth int) error {
-	// Max depth is 2, because we don't support deep struct composition, which cant be represented in excel
-	if depth > 1 {
-		return fmt.Errorf("unsupported struct composition, depth: %d", depth)
-	}
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		// We don't support pointer to slice or pointer to pointer
-		if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
-			return fmt.Errorf("pointer to the type is not allowed: %s", t.Kind())
-		}
-	}
-	// For depth 0, we only allow structs or pointers to structs
-	if depth == 0 && t.Kind() != reflect.Struct {
-		return fmt.Errorf("unsupported type: %s", t.Kind())
-	}
-	// For depth 1, we allow structs, pointers to structs + slices and primitives
-	if depth == 1 && t.Kind() != reflect.Struct && t.Kind() != reflect.Slice && isPrimitive(t.Kind()) {
-		return fmt.Errorf("unsupported type: %s", t.Kind())
-	}
-	return nil
 }
