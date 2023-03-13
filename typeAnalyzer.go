@@ -27,6 +27,7 @@ type fieldInfo struct {
 	isPrimaryKey bool
 	index        []int
 	kind         kind
+	required     bool
 }
 
 func (i fieldInfo) equal(b fieldInfo) bool {
@@ -181,8 +182,7 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 	index := make([]int, 0, len(currentNode.indexPrefix)+len(field.Index))
 	index = append(index, currentNode.indexPrefix...)
 	index = append(index, field.Index...)
-	// Get field order
-	order := getFieldOrder(field, i)
+	tagOptions := parseTagOptions(field, i)
 	// Get field name
 	name := getFieldName(field)
 	// Get field kind
@@ -190,7 +190,6 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 	if err != nil {
 		return fieldInfo{}, err
 	}
-	isPrimaryKey := isPrimaryKey(field)
 	if typeKind == kindSlice {
 		// For slices, we only allow slices of structs
 		if field.Type.Elem().Kind() != reflect.Struct {
@@ -200,13 +199,47 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 	// Get field prefix
 	prefix := getNextFieldPrefix(field, name, currentNode.columnPrefix, typeKind)
 	return fieldInfo{
-		isPrimaryKey: isPrimaryKey,
-		order:        order,
+		isPrimaryKey: tagOptions.primaryKey,
+		order:        tagOptions.order,
 		name:         currentNode.columnPrefix + name,
 		kind:         typeKind,
 		index:        index,
 		nextPrefix:   prefix, //For nested structs
+		required:     tagOptions.required,
 	}, nil
+}
+
+type tagOptions struct {
+	order      int
+	primaryKey bool
+	required   bool
+}
+
+func parseTagOptions(field reflect.StructField, i int) tagOptions {
+	tag := field.Tag.Get(DefaultTag)
+	segments := strings.Split(tag, ",")
+	options := tagOptions{}
+	for _, o := range segments {
+		//Order
+		if strings.HasPrefix(o, "order:") {
+			order, err := strconv.Atoi(strings.TrimPrefix(o, "order:"))
+			if err != nil {
+				options.order = i
+			}
+			options.order = order
+			continue
+		}
+		//Required
+		if strings.TrimSpace(o) == "required" {
+			options.required = true
+			continue
+		}
+		if strings.TrimSpace(o) == "primary" {
+			options.primaryKey = true
+			continue
+		}
+	}
+	return options
 }
 
 func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k kind) string {
@@ -233,14 +266,25 @@ func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k ki
 	return prevPrefix
 }
 
-func isPrimaryKey(field reflect.StructField) bool {
-	segments := strings.Split(field.Tag.Get(DefaultTag), ",")
-	for _, segment := range segments {
-		if strings.TrimSpace(segment) == "primary" {
-			return true
-		}
+func getFieldName(field reflect.StructField) string {
+	// Tag has values separated by comma, first value is always the name, so we split it
+	tagValue := field.Tag.Get(DefaultTag)
+	if tagValue == "" {
+		return field.Name
 	}
-	return false
+	name := strings.Split(tagValue, ",")[0]
+	if name == "" {
+		name = field.Name
+	}
+	return name
+}
+
+func isFieldIgnored(field reflect.StructField) bool {
+	return field.Tag.Get(DefaultTag) == "-"
+}
+
+func isUnexported(field reflect.StructField) bool {
+	return field.PkgPath != ""
 }
 
 func getKind(t reflect.Type) (kind, error) {
@@ -276,44 +320,4 @@ func getPointedKind(v reflect.Kind) (kind, error) {
 	default:
 		return -1, fmt.Errorf("unsupported type: %s", v)
 	}
-}
-
-func getFieldOrder(field reflect.StructField, i int) int {
-	tag := field.Tag.Get(DefaultTag)
-	if tag == "" {
-		return i
-	}
-	segments := strings.Split(tag, ",")
-	for _, o := range segments {
-		if !strings.HasPrefix(o, "order:") {
-			continue
-		}
-		order, err := strconv.Atoi(strings.TrimPrefix(o, "order:"))
-		if err != nil {
-			return i
-		}
-		return order
-	}
-	return i
-}
-
-func getFieldName(field reflect.StructField) string {
-	// Tag has values separated by comma, first value is always the name, so we split it
-	tagValue := field.Tag.Get(DefaultTag)
-	if tagValue == "" {
-		return field.Name
-	}
-	name := strings.Split(tagValue, ",")[0]
-	if name == "" {
-		name = field.Name
-	}
-	return name
-}
-
-func isFieldIgnored(field reflect.StructField) bool {
-	return field.Tag.Get(DefaultTag) == "-"
-}
-
-func isUnexported(field reflect.StructField) bool {
-	return field.PkgPath != ""
 }
