@@ -225,7 +225,7 @@ func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 		Two string `gex:"two"`
 	}
 	type embeddedStruct struct {
-		es    `gex:"noprefix"`
+		es
 		Three string `gex:"three"`
 		Four  string `gex:"four"`
 	}

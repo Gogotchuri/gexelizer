@@ -221,7 +221,7 @@ func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k ki
 			prefix = prevPrefix + strings.TrimSpace(strings.TrimPrefix(segment, "prefix:"))
 		}
 	}
-	if noPrefix {
+	if noPrefix || field.Anonymous {
 		return prevPrefix
 	}
 	if k != kindPrimitive && k != kindPrimitivePtr {
