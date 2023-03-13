@@ -225,7 +225,7 @@ func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 		Two string `gex:"two"`
 	}
 	type embeddedStruct struct {
-		es
+		es    `gex:"noprefix"`
 		Three string `gex:"three"`
 		Four  string `gex:"four"`
 	}
@@ -367,7 +367,6 @@ func TestTypeAnalyzer_StructFieldPtr(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("%+v", info)
 	if err := typeInfosEqual(expected, info); err != nil {
 		t.Fatal(err)
 	}
@@ -398,7 +397,6 @@ func TestTypeAnalyzer_StructFieldOrderTag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("%+v\n", info)
 	if err := typeInfosEqual(expected, info); err != nil {
 		t.Fatal(err)
 	}
@@ -434,7 +432,6 @@ func TestTypeAnalyzer_SliceStruct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("%+v\n", info)
 	if err := typeInfosEqual(expected, info); err != nil {
 		t.Fatal(err)
 	}
