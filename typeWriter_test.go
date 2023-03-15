@@ -2,10 +2,59 @@ package gexelizer
 
 import "testing"
 
-func TestNewExcel(t *testing.T) {
-	// TODO
+func TestExcel_WriteBasic(t *testing.T) {
+	type row struct {
+		Name string
+		Age  int
+	}
+	writer, err := NewTypeWriter[row]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writer.writeRow(row{
+		Name: "John",
+		Age:  20,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writer.writeRow(row{
+		Name: "Jane",
+		Age:  21,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
 
-func TestExcel_Write(t *testing.T) {
-
+func TestExcel_WriteStructWSlice(t *testing.T) {
+	type sliceStruct struct {
+		Position string
+	}
+	type row struct {
+		Name string
+		Age  int
+		Job  []sliceStruct
+	}
+	writer, err := NewTypeWriter[row]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writer.writeRow(row{
+		Name: "John",
+		Age:  20,
+		Job:  []sliceStruct{{"A"}, {"B"}},
+	})
+	if err != nil {
+		return
+	}
+	err = writer.writeRow(row{
+		Name: "Jane",
+		Age:  21,
+		Job:  []sliceStruct{{"C"}, {"D"}},
+	})
+	if err != nil {
+		return
+	}
 }

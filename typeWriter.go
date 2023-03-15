@@ -9,8 +9,8 @@ import (
 
 type TypeWriter[T any] struct {
 	file           ExcelFileWriter
+	typeInfo       typeInfo
 	headers        []string
-	ignored        map[int]struct{}
 	nextRowToWrite uint
 	options        *Options
 }
@@ -20,7 +20,7 @@ type TypeWriter[T any] struct {
 // This function is heavier, so it is recommended to create a single instance and reuse it
 // Otherwise, it is recommended to make it parallel while you fetch data to write
 func NewTypeWriter[T any]() (*TypeWriter[T], error) {
-	w := &TypeWriter[T]{ignored: make(map[int]struct{})}
+	w := &TypeWriter[T]{}
 	if err := w.analyzeType(); err != nil {
 		return nil, err
 	}
@@ -75,7 +75,16 @@ func (w *TypeWriter[T]) analyzeType() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(info)
+	w.typeInfo = info
+	w.headers = make([]string, 0, len(info.orderedColumns))
+	//Include headers except for slices
+	for _, col := range info.orderedColumns {
+		fi := info.nameToField[col]
+		if fi.kind == kindSlice {
+			continue
+		}
+		w.headers = append(w.headers, col)
+	}
 	return nil
 }
 
@@ -84,6 +93,24 @@ func (w *TypeWriter[T]) writeHeaders() error {
 }
 
 func (w *TypeWriter[T]) writeRow(row T) error {
-	//TODO: implement
-	return nil
+	cellValues := make([]interface{}, 0, len(w.typeInfo.orderedColumns))
+	for i := 0; i < len(w.typeInfo.orderedColumns); i++ {
+		col := w.typeInfo.orderedColumns[i]
+		fieldInfo := w.typeInfo.nameToField[col]
+		fieldValue := reflect.ValueOf(row).FieldByIndex(fieldInfo.index)
+		if fieldInfo.kind == kindSlice {
+			for j := 0; j < fieldValue.Len(); j++ {
+				i++ //TODO wrong, because, every row isn't different column
+				col = w.typeInfo.orderedColumns[i]
+				sliceElemInfo := w.typeInfo.nameToField[col]
+				println(fieldValue.Kind(), fieldValue.Type(), fieldValue.Len(), j)
+				sliceElem := fieldValue.Index(j)
+				cellValues = append(cellValues, sliceElem.FieldByIndex(sliceElemInfo.index[1:]).Interface())
+				w.nextRowToWrite++
+			}
+		} else {
+			cellValues = append(cellValues, fieldValue.Interface())
+		}
+	}
+	return w.file.SetRow(w.nextRowToWrite, cellValues)
 }

@@ -13,6 +13,7 @@ type ExcelFileWriter interface {
 	WriteToBuffer() (*bytes.Buffer, error)
 	SetCellValueOfSheet(sheet, axis string, value any) error
 	SetRowOfSheet(sheet string, row uint, values []any) error
+	SetRow(row uint, values []any) error
 	SetCellValue(axis string, value any) error
 	SetStringRow(row uint, values []string) error
 	GetDefaultSheet() string
@@ -58,6 +59,9 @@ func (f *excelFile) SetCellValueOfSheet(sheet, axis string, value any) error {
 }
 func (f *excelFile) SetStringRow(row uint, values []string) error {
 	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), values)
+}
+func (f *excelFile) SetRow(row uint, values []any) error {
+	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), &values)
 }
 
 func (f *excelFile) SetCellValue(axis string, value any) error {
