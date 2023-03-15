@@ -2,7 +2,6 @@ package gexelizer
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"reflect"
 )
@@ -19,28 +18,19 @@ type TypeWriter[T any] struct {
 // It returns an error if the type T cannot be written to excel
 // This function is heavier, so it is recommended to create a single instance and reuse it
 // Otherwise, it is recommended to make it parallel while you fetch data to writeSingle
-func NewTypeWriter[T any]() (*TypeWriter[T], error) {
+func NewTypeWriter[T any](opts ...Options) (*TypeWriter[T], error) {
 	w := &TypeWriter[T]{}
 	if err := w.analyzeType(); err != nil {
 		return nil, err
 	}
-	w.file = NewExcel()
-	w.options = DefaultOptions()
+	w.file = newExcel()
+	if len(opts) > 0 {
+		w.options = &opts[0]
+	} else {
+		w.options = DefaultOptions()
+	}
 	w.nextRowToWrite = w.options.HeaderRow
 	return w, nil
-}
-
-func NewOptionedTypeWriter[T any](opt Options) (*TypeWriter[T], error) {
-	if opt.DataStartRow <= opt.HeaderRow {
-		return nil, fmt.Errorf("data start row must be greater than header row")
-	}
-	writer, err := NewTypeWriter[T]()
-	if err != nil {
-		return nil, err
-	}
-	writer.options = &opt
-	writer.nextRowToWrite = opt.HeaderRow
-	return writer, nil
 }
 
 func (w *TypeWriter[T]) Write(data []T) error {
@@ -57,6 +47,14 @@ func (w *TypeWriter[T]) Write(data []T) error {
 		if err := w.writeSingle(row); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (w *TypeWriter[T]) WriteToFile(filename string) error {
+	//Create file
+	if err := w.file.SaveAs(filename); err != nil {
+		return err
 	}
 	return nil
 }
@@ -100,13 +98,14 @@ type singleWrite struct {
 func newRows(numColumns int) singleWrite {
 	sw := singleWrite{rows: make([][]any, 1)}
 	sw.rows[0] = make([]any, numColumns)
+	sw.numColumns = numColumns
 	return sw
 }
 
 func (r *singleWrite) setCell(x, y int, value any) {
 	currentLen := len(r.rows)
 	if currentLen <= y {
-		for i := currentLen; i < y; i++ {
+		for i := currentLen; i <= y; i++ {
 			r.rows = append(r.rows, make([]any, r.numColumns))
 			//Fill new singleWrite with values from the previous row
 			for j := 0; j < r.numColumns; j++ {
@@ -125,7 +124,7 @@ func (r *singleWrite) setCell(x, y int, value any) {
 
 func (r *singleWrite) setColumnValue(x int, value any) {
 	if len(r.rows) == 1 {
-		r.rows[0] = append(r.rows[0], value)
+		r.rows[0][x] = value
 		return
 	}
 	for i := 0; i < len(r.rows); i++ {
@@ -135,24 +134,29 @@ func (r *singleWrite) setColumnValue(x int, value any) {
 
 func (w *TypeWriter[T]) writeSingle(row T) error {
 	sw := newRows(len(w.headers))
+	passedSlice := false
 	for i := 0; i < len(w.typeInfo.orderedColumns); i++ {
 		col := w.typeInfo.orderedColumns[i]
 		fieldInfo := w.typeInfo.nameToField[col]
 		fieldValue := reflect.ValueOf(row).FieldByIndex(fieldInfo.index)
 		if fieldInfo.kind == kindSlice {
 			// For each slice element, write a new row, and fill the rest of the columns with the previous value
-			for sf := 0; sf < fieldValue.Elem().Type().NumField(); sf++ { //TODO fix field iteration
+			for sf := 0; sf < fieldValue.Type().Elem().NumField(); sf++ { //TODO fix field iteration
 				i++ //Skip the slice column itself and write the slice elements
 				col = w.typeInfo.orderedColumns[i]
 				for j := 0; j < fieldValue.Len(); j++ { //For each slice struct property fill the column with the values
 					sliceElemInfo := w.typeInfo.nameToField[col]
-					println(fieldValue.Kind(), fieldValue.Type(), fieldValue.Len(), j)
 					sliceElemValue := fieldValue.Index(j).FieldByIndex(sliceElemInfo.index[1:])
-					sw.setCell(i, j, sliceElemValue.Interface())
+					sw.setCell(i-1, j, sliceElemValue.Interface())
 				}
 			}
+			passedSlice = true
 		} else {
-			sw.setColumnValue(i, fieldValue.Interface())
+			x := i
+			if passedSlice {
+				x -= 1
+			}
+			sw.setColumnValue(x, fieldValue.Interface())
 		}
 	}
 
@@ -160,7 +164,6 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 		if err := w.file.SetRow(w.nextRowToWrite, row); err != nil {
 			return err
 		}
-		fmt.Printf("Writing row %+v\n", row)
 		w.nextRowToWrite++
 	}
 	return nil

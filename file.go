@@ -32,13 +32,13 @@ type excelFile struct {
 	rows [][]string
 }
 
-func NewExcel() ExcelFileWriter {
+func newExcel() ExcelFileWriter {
 	return &excelFile{
 		file: excelize.NewFile(),
 	}
 }
 
-func ReadExcel(reader io.Reader) (ExcelFileReader, error) {
+func readExcel(reader io.Reader) (ExcelFileReader, error) {
 	file, err := excelize.OpenReader(reader)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (f *excelFile) SetCellValueOfSheet(sheet, axis string, value any) error {
 	return f.file.SetCellValue(sheet, axis, value)
 }
 func (f *excelFile) SetStringRow(row uint, values []string) error {
-	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), values)
+	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), &values)
 }
 func (f *excelFile) SetRow(row uint, values []any) error {
 	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), &values)
