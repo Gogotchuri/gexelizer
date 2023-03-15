@@ -18,7 +18,7 @@ type TypeWriter[T any] struct {
 // NewTypeWriter creates a new TypeWriter[T] instance
 // It returns an error if the type T cannot be written to excel
 // This function is heavier, so it is recommended to create a single instance and reuse it
-// Otherwise, it is recommended to make it parallel while you fetch data to write
+// Otherwise, it is recommended to make it parallel while you fetch data to writeSingle
 func NewTypeWriter[T any]() (*TypeWriter[T], error) {
 	w := &TypeWriter[T]{}
 	if err := w.analyzeType(); err != nil {
@@ -54,7 +54,7 @@ func (w *TypeWriter[T]) Write(data []T) error {
 		}
 	}
 	for _, row := range data {
-		if err := w.writeRow(row); err != nil {
+		if err := w.writeSingle(row); err != nil {
 			return err
 		}
 	}
@@ -92,25 +92,76 @@ func (w *TypeWriter[T]) writeHeaders() error {
 	return w.file.SetStringRow(w.options.HeaderRow, w.headers)
 }
 
-func (w *TypeWriter[T]) writeRow(row T) error {
-	cellValues := make([]interface{}, 0, len(w.typeInfo.orderedColumns))
+type singleWrite struct {
+	rows       [][]any
+	numColumns int
+}
+
+func newRows(numColumns int) singleWrite {
+	sw := singleWrite{rows: make([][]any, 1)}
+	sw.rows[0] = make([]any, numColumns)
+	return sw
+}
+
+func (r *singleWrite) setCell(x, y int, value any) {
+	currentLen := len(r.rows)
+	if currentLen <= y {
+		for i := currentLen; i < y; i++ {
+			r.rows = append(r.rows, make([]any, r.numColumns))
+			//Fill new singleWrite with values from the previous row
+			for j := 0; j < r.numColumns; j++ {
+				if r.rows[i-1][j] == nil || r.rows[i][j] != nil {
+					continue
+				}
+				if j == x {
+					continue
+				}
+				r.rows[i][j] = r.rows[i-1][j]
+			}
+		}
+	}
+	r.rows[y][x] = value
+}
+
+func (r *singleWrite) setColumnValue(x int, value any) {
+	if len(r.rows) == 1 {
+		r.rows[0] = append(r.rows[0], value)
+		return
+	}
+	for i := 0; i < len(r.rows); i++ {
+		r.setCell(x, i, value)
+	}
+}
+
+func (w *TypeWriter[T]) writeSingle(row T) error {
+	sw := newRows(len(w.headers))
 	for i := 0; i < len(w.typeInfo.orderedColumns); i++ {
 		col := w.typeInfo.orderedColumns[i]
 		fieldInfo := w.typeInfo.nameToField[col]
 		fieldValue := reflect.ValueOf(row).FieldByIndex(fieldInfo.index)
 		if fieldInfo.kind == kindSlice {
-			for j := 0; j < fieldValue.Len(); j++ {
-				i++ //TODO wrong, because, every row isn't different column
+			// For each slice element, write a new row, and fill the rest of the columns with the previous value
+			for sf := 0; sf < fieldValue.Elem().Type().NumField(); sf++ { //TODO fix field iteration
+				i++ //Skip the slice column itself and write the slice elements
 				col = w.typeInfo.orderedColumns[i]
-				sliceElemInfo := w.typeInfo.nameToField[col]
-				println(fieldValue.Kind(), fieldValue.Type(), fieldValue.Len(), j)
-				sliceElem := fieldValue.Index(j)
-				cellValues = append(cellValues, sliceElem.FieldByIndex(sliceElemInfo.index[1:]).Interface())
-				w.nextRowToWrite++
+				for j := 0; j < fieldValue.Len(); j++ { //For each slice struct property fill the column with the values
+					sliceElemInfo := w.typeInfo.nameToField[col]
+					println(fieldValue.Kind(), fieldValue.Type(), fieldValue.Len(), j)
+					sliceElemValue := fieldValue.Index(j).FieldByIndex(sliceElemInfo.index[1:])
+					sw.setCell(i, j, sliceElemValue.Interface())
+				}
 			}
 		} else {
-			cellValues = append(cellValues, fieldValue.Interface())
+			sw.setColumnValue(i, fieldValue.Interface())
 		}
 	}
-	return w.file.SetRow(w.nextRowToWrite, cellValues)
+
+	for _, row := range sw.rows {
+		if err := w.file.SetRow(w.nextRowToWrite, row); err != nil {
+			return err
+		}
+		fmt.Printf("Writing row %+v\n", row)
+		w.nextRowToWrite++
+	}
+	return nil
 }

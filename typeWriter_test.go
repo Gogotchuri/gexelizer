@@ -11,14 +11,14 @@ func TestExcel_WriteBasic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = writer.writeRow(row{
+	err = writer.writeSingle(row{
 		Name: "John",
 		Age:  20,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = writer.writeRow(row{
+	err = writer.writeSingle(row{
 		Name: "Jane",
 		Age:  21,
 	})
@@ -41,7 +41,7 @@ func TestExcel_WriteStructWSlice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = writer.writeRow(row{
+	err = writer.writeSingle(row{
 		Name: "John",
 		Age:  20,
 		Job:  []sliceStruct{{"A"}, {"B"}},
@@ -49,7 +49,7 @@ func TestExcel_WriteStructWSlice(t *testing.T) {
 	if err != nil {
 		return
 	}
-	err = writer.writeRow(row{
+	err = writer.writeSingle(row{
 		Name: "Jane",
 		Age:  21,
 		Job:  []sliceStruct{{"C"}, {"D"}},
