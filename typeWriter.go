@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"reflect"
+	"strings"
 )
 
 type TypeWriter[T any] struct {
@@ -87,7 +88,11 @@ func (w *TypeWriter[T]) analyzeType() error {
 }
 
 func (w *TypeWriter[T]) writeHeaders() error {
-	return w.file.SetStringRow(w.options.HeaderRow, w.headers)
+	capitalized := make([]string, len(w.headers))
+	for i, header := range w.headers {
+		capitalized[i] = strings.ToUpper(header[0:1]) + header[1:]
+	}
+	return w.file.SetStringRow(w.options.HeaderRow, capitalized)
 }
 
 type singleWrite struct {

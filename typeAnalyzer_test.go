@@ -13,8 +13,8 @@ func TestTypeAnalyzer_OneField(t *testing.T) {
 	expected := typeInfo{
 		t:              reflect.TypeOf(oneField{}),
 		primaryKeyName: "",
-		orderedColumns: []string{"One"},
-		nameToField:    map[string]fieldInfo{"One": {name: "One", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive}},
+		orderedColumns: []string{"one"},
+		nameToField:    map[string]fieldInfo{"one": {name: "One", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive}},
 	}
 	info, err := analyzeType(reflect.TypeOf(oneField{}))
 	if err != nil {
@@ -33,10 +33,10 @@ func TestTypeAnalyzer_TwoFields(t *testing.T) {
 	expected := typeInfo{
 		t:              reflect.TypeOf(twoFields{}),
 		primaryKeyName: "",
-		orderedColumns: []string{"One", "Two"},
+		orderedColumns: []string{"one", "two"},
 		nameToField: map[string]fieldInfo{
-			"One": {name: "One", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
-			"Two": {name: "Two", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"one": {name: "One", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
+			"two": {name: "Two", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(twoFields{}))
@@ -57,8 +57,8 @@ func TestTypeAnalyzer_UnexportedFields(t *testing.T) {
 	expected := typeInfo{
 		t:              reflect.TypeOf(unexportedFields{}),
 		primaryKeyName: "",
-		orderedColumns: []string{"Three"},
-		nameToField:    map[string]fieldInfo{"Three": {name: "Three", order: 0, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive}},
+		orderedColumns: []string{"three"},
+		nameToField:    map[string]fieldInfo{"three": {name: "Three", order: 0, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive}},
 	}
 	info, err := analyzeType(reflect.TypeOf(unexportedFields{}))
 	if err != nil {
@@ -90,22 +90,22 @@ func TestTypeAnalyzer_PrimitiveFields(t *testing.T) {
 	expected := typeInfo{
 		t:              reflect.TypeOf(primitiveFields{}),
 		primaryKeyName: "",
-		orderedColumns: []string{"Bool", "String", "Int", "Int8", "Int16", "Int32", "Int64", "Uint", "Uint8", "Uint16", "Uint32", "Uint64", "Float32", "Float64"},
+		orderedColumns: []string{"bool", "string", "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "float32", "float64"},
 		nameToField: map[string]fieldInfo{
-			"Bool":    {name: "Bool", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
-			"String":  {name: "String", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
-			"Int":     {name: "Int", order: 2, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
-			"Int8":    {name: "Int8", order: 3, isPrimaryKey: false, index: []int{3}, kind: kindPrimitive},
-			"Int16":   {name: "Int16", order: 4, isPrimaryKey: false, index: []int{4}, kind: kindPrimitive},
-			"Int32":   {name: "Int32", order: 5, isPrimaryKey: false, index: []int{5}, kind: kindPrimitive},
-			"Int64":   {name: "Int64", order: 6, isPrimaryKey: false, index: []int{6}, kind: kindPrimitive},
-			"Uint":    {name: "Uint", order: 7, isPrimaryKey: false, index: []int{7}, kind: kindPrimitive},
-			"Uint8":   {name: "Uint8", order: 8, isPrimaryKey: false, index: []int{8}, kind: kindPrimitive},
-			"Uint16":  {name: "Uint16", order: 9, isPrimaryKey: false, index: []int{9}, kind: kindPrimitive},
-			"Uint32":  {name: "Uint32", order: 10, isPrimaryKey: false, index: []int{10}, kind: kindPrimitive},
-			"Uint64":  {name: "Uint64", order: 11, isPrimaryKey: false, index: []int{11}, kind: kindPrimitive},
-			"Float32": {name: "Float32", order: 12, isPrimaryKey: false, index: []int{12}, kind: kindPrimitive},
-			"Float64": {name: "Float64", order: 13, isPrimaryKey: false, index: []int{13}, kind: kindPrimitive},
+			"bool":    {name: "Bool", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindPrimitive},
+			"string":  {name: "String", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
+			"int":     {name: "Int", order: 2, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
+			"int8":    {name: "Int8", order: 3, isPrimaryKey: false, index: []int{3}, kind: kindPrimitive},
+			"int16":   {name: "Int16", order: 4, isPrimaryKey: false, index: []int{4}, kind: kindPrimitive},
+			"int32":   {name: "Int32", order: 5, isPrimaryKey: false, index: []int{5}, kind: kindPrimitive},
+			"int64":   {name: "Int64", order: 6, isPrimaryKey: false, index: []int{6}, kind: kindPrimitive},
+			"uint":    {name: "Uint", order: 7, isPrimaryKey: false, index: []int{7}, kind: kindPrimitive},
+			"uint8":   {name: "Uint8", order: 8, isPrimaryKey: false, index: []int{8}, kind: kindPrimitive},
+			"uint16":  {name: "Uint16", order: 9, isPrimaryKey: false, index: []int{9}, kind: kindPrimitive},
+			"uint32":  {name: "Uint32", order: 10, isPrimaryKey: false, index: []int{10}, kind: kindPrimitive},
+			"uint64":  {name: "Uint64", order: 11, isPrimaryKey: false, index: []int{11}, kind: kindPrimitive},
+			"float32": {name: "Float32", order: 12, isPrimaryKey: false, index: []int{12}, kind: kindPrimitive},
+			"float64": {name: "Float64", order: 13, isPrimaryKey: false, index: []int{13}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(primitiveFields{}))
@@ -291,10 +291,10 @@ func TestTypeAnalyzer_StructField(t *testing.T) {
 	expected := typeInfo{
 		t:              reflect.TypeOf(structField{}),
 		primaryKeyName: "",
-		orderedColumns: []string{"Sf.one", "Sf.two", "three", "four"},
+		orderedColumns: []string{"sf.one", "sf.two", "three", "four"},
 		nameToField: map[string]fieldInfo{
-			"Sf.one": {name: "Sf.one", order: 0, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
-			"Sf.two": {name: "Sf.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"sf.one": {name: "Sf.one", order: 0, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"sf.two": {name: "Sf.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
 			"three":  {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
 			"four":   {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
 		},
@@ -383,11 +383,11 @@ func TestTypeAnalyzer_StructFieldPtr(t *testing.T) {
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(structFieldPtr{}),
-		primaryKeyName: "Sf.one",
-		orderedColumns: []string{"Sf.one", "Sf.two", "three", "four"},
+		primaryKeyName: "sf.one",
+		orderedColumns: []string{"sf.one", "sf.two", "three", "four"},
 		nameToField: map[string]fieldInfo{
-			"Sf.one": {name: "Sf.one", order: 0, isPrimaryKey: true, index: []int{0, 0}, kind: kindPrimitive},
-			"Sf.two": {name: "Sf.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
+			"sf.one": {name: "Sf.one", order: 0, isPrimaryKey: true, index: []int{0, 0}, kind: kindPrimitive},
+			"sf.two": {name: "Sf.two", order: 1, isPrimaryKey: false, index: []int{0, 1}, kind: kindPrimitive},
 			"three":  {name: "three", order: 2, isPrimaryKey: false, index: []int{1}, kind: kindPrimitive},
 			"four":   {name: "four", order: 3, isPrimaryKey: false, index: []int{2}, kind: kindPrimitive},
 		},
@@ -446,15 +446,17 @@ func TestTypeAnalyzer_SliceStruct(t *testing.T) {
 		One string `gex:"one"`
 	}
 	type sliceStructSlice struct {
+		ID    int64         `gex:"id,primary"`
 		Slice []sliceStruct `gex:""`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(sliceStructSlice{}),
-		primaryKeyName: "",
-		orderedColumns: []string{"Slice", "Slice.one"},
+		primaryKeyName: "id",
+		orderedColumns: []string{"id", "slice", "slice.one"},
 		nameToField: map[string]fieldInfo{
-			"Slice":     {name: "Slice", order: 0, isPrimaryKey: false, index: []int{0}, kind: kindSlice},
-			"Slice.one": {name: "Slice.one", order: 1, isPrimaryKey: false, index: []int{0, 0}, kind: kindPrimitive},
+			"id":        {name: "id", order: 0, isPrimaryKey: true, index: []int{0}, kind: kindPrimitive},
+			"slice":     {name: "Slice", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindSlice},
+			"slice.one": {name: "Slice.one", order: 2, isPrimaryKey: false, index: []int{1, 0}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(sliceStructSlice{}))

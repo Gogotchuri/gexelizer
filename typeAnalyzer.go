@@ -78,10 +78,10 @@ func (info typeInfo) sortColumns() {
 		return infoA.order < infoB.order
 	})
 	for i, name := range info.orderedColumns {
-		fi := info.nameToField[name]
+		fi := info.nameToField[strings.ToLower(name)]
 		fi.order = i
 		fi.nextPrefix = ""
-		info.nameToField[name] = fi
+		info.nameToField[strings.ToLower(name)] = fi
 	}
 }
 
@@ -136,7 +136,7 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 				if info.primaryKeyName != "" {
 					return typeInfo{}, fmt.Errorf("multiple primary keys are not allowed")
 				}
-				info.primaryKeyName = fi.name
+				info.primaryKeyName = strings.ToLower(fi.name)
 			}
 
 			if fi.kind == kindSlice {
@@ -167,12 +167,16 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 				})
 				continue
 			}
-			if _, ok := info.nameToField[fi.name]; ok {
+			lowerName := strings.TrimSpace(strings.ToLower(fi.name))
+			if _, ok := info.nameToField[lowerName]; ok {
 				return typeInfo{}, fmt.Errorf("duplicate field name: %s", fi.name)
 			}
-			info.nameToField[fi.name] = fi
-			info.orderedColumns = append(info.orderedColumns, fi.name) //To be sorted later
+			info.nameToField[lowerName] = fi
+			info.orderedColumns = append(info.orderedColumns, lowerName) //To be sorted later
 		}
+	}
+	if info.primaryKeyName == "" && encounteredSlice {
+		return typeInfo{}, fmt.Errorf("primary key is required when a slice is present")
 	}
 	info.sortColumns()
 	return info, nil

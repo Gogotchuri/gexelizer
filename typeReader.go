@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 )
 
 type TypeReader[T any] struct {
@@ -46,16 +47,32 @@ func NewTypeReader[T any](reader io.Reader, opts ...Options) (*TypeReader[T], er
 func (t *TypeReader[T]) Read() ([]T, error) {
 	var result []T
 	for t.nextRowToRead < uint(len(t.rows)) {
-		//todo
-		//row := t.rows[t.nextRowToRead]
+		row := t.rows[t.nextRowToRead]
 		t.nextRowToRead++
 		var toRead T
-		//if err := t.readSingle(row, &toRead); err != nil {
-		//	return nil, err
-		//}
+		if err := t.readSingle(row, &toRead); err != nil {
+			return nil, err
+		}
 		result = append(result, toRead)
 	}
 	return result, nil
+}
+
+func (t *TypeReader[T]) readSingle(row []string, dest *T) error {
+	//Set all values to nil
+	//destValue := reflect.ValueOf(dest).Elem()
+	for _, col := range t.typeInfo.orderedColumns {
+		fi := t.typeInfo.nameToField[col]
+		if fi.kind == kindSlice {
+			continue
+		}
+		//if index, exists := t.headersToIndex[col]; exists {
+		//if err := t.readCell(row[index], fi, destValue); err != nil {
+		//	return err
+		//}
+		//}
+	}
+	return nil
 }
 
 func (t *TypeReader[T]) analyzeType() error {
@@ -72,7 +89,10 @@ func (t *TypeReader[T]) analyzeType() error {
 	if len(t.rows) < int(t.options.HeaderRow) {
 		return fmt.Errorf("header row is out of bounds")
 	}
-	t.headers = t.rows[t.options.HeaderRow]
+	t.headers = make([]string, len(t.rows[t.options.HeaderRow]))
+	for i, header := range t.rows[t.options.HeaderRow] {
+		t.headers[i] = strings.TrimSpace(strings.ToLower(header))
+	}
 	t.headersToIndex = make(map[string]int, len(t.headers))
 	for i, header := range t.headers {
 		t.headersToIndex[header] = i

@@ -33,7 +33,7 @@ func TestExcel_WriteStructWSlice(t *testing.T) {
 		Position string
 	}
 	type row struct {
-		Name string
+		Name string `gex:"name,primary"`
 		Age  int
 		Job  []sliceStruct
 	}
@@ -64,7 +64,7 @@ func TestExcel_WriteStructWSliceInMiddle(t *testing.T) {
 		Position string
 	}
 	type row struct {
-		Name string
+		Name string `gex:"name,primary"`
 		Age  int
 		Job  []sliceStruct
 		Job2 string
@@ -98,7 +98,7 @@ func TestTypeWriter_WriteToFile(t *testing.T) {
 		Position string
 	}
 	type row struct {
-		Name string
+		Name string `gex:"name,primary"`
 		SL   []sliceStruct
 		Age  int
 	}
