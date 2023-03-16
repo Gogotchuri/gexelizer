@@ -38,6 +38,18 @@ func newExcel() ExcelFileWriter {
 	}
 }
 
+func readExcelFile(path string) (ExcelFileReader, error) {
+	file, err := excelize.OpenFile(path)
+	if err != nil {
+		return nil, err
+	}
+	excel := &excelFile{
+		file: file,
+	}
+	excel.rows, err = excel.GetDefaultSheetRows()
+	return excel, nil
+}
+
 func readExcel(reader io.Reader) (ExcelFileReader, error) {
 	file, err := excelize.OpenReader(reader)
 	if err != nil {
