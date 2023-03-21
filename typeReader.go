@@ -60,15 +60,7 @@ func ReadExcelFile[T any](filename string, opts ...Options) ([]T, error) {
 	return r.Read()
 }
 
-// ReadExcelReader reads an excel file and returns a parsed slice of T objects or an error
-func ReadExcelReader[T any](reader io.Reader, opts ...Options) ([]T, error) {
-	r, err := NewTypeReader[T](reader, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return r.Read()
-}
-
+// NewTypeReader creates a new TypeReader[T] instance
 func NewTypeReader[T any](reader io.Reader, opts ...Options) (*TypeReader[T], error) {
 	if reader == nil {
 		return nil, fmt.Errorf("reader cannot be nil")
