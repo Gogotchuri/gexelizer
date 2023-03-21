@@ -126,19 +126,15 @@ func (t *TypeReader[T]) readSingle(row []string, toRead *T) (string, error) {
 		for i := 0; i < len(t.typeInfo.orderedColumns); i++ {
 			col := t.typeInfo.orderedColumns[i]
 			fi := t.typeInfo.nameToField[col]
-			err, toContinue := t.setParsedValue(v.FieldByIndex(fi.index), col, fi, row)
+			err := t.setParsedValue(v.FieldByIndex(fi.index), col, fi, row)
 			if err != nil {
 				return "", err
-			}
-			if toContinue {
-				continue
 			}
 		}
 		return "", nil
 	}
 	// if the type contains a slice, we need to read the slice elements as well
 	primaryKey := ""
-	passedSlice := false
 	sliceFI := *t.typeInfo.sliceFieldInfo
 	sliceFV := v.FieldByIndex(sliceFI.index)
 	firstElem := reflect.New(sliceFV.Type().Elem()).Elem()
@@ -146,69 +142,47 @@ func (t *TypeReader[T]) readSingle(row []string, toRead *T) (string, error) {
 		col := t.typeInfo.orderedColumns[i]
 		fi := t.typeInfo.nameToField[col]
 		if fi.kind == kindSlice {
-			passedSlice = true
 			continue
 		}
+		var fieldToSet reflect.Value
 		if fi.isChildOf(sliceFI) {
-
+			fieldToSet = firstElem.FieldByIndex(fi.index[len(sliceFI.index):])
+		} else {
+			fieldToSet = v.FieldByIndex(fi.index)
 		}
-		sliceField := v.FieldByIndex(fi.index)
-		sliceValue := sliceField
-		newSlice := reflect.MakeSlice(sliceValue.Type(), 0, 1)
-		firstElem := reflect.New(sliceValue.Type().Elem()).Elem()
-		for sf := 0; sf < sliceField.Type().Elem().NumField(); sf++ {
-			i++ //Skip the slice column itself and write the slice elements
-			col = t.typeInfo.orderedColumns[i]
-			fi = t.typeInfo.nameToField[col]
-			sliceElemInfo := t.typeInfo.nameToField[col]
-			sliceElemValue := firstElem.FieldByIndex(sliceElemInfo.index[1:])
-			err, toContinue := t.setParsedValue(sliceElemValue, col, sliceElemInfo, row)
-			if err != nil {
-				return "", err
-			}
-			if toContinue {
-				continue
-			}
-		}
-		newSlice = reflect.Append(newSlice, firstElem)
-		sliceValue.Set(newSlice)
-		continue
-		err, toContinue := t.setParsedValue(v.FieldByIndex(fi.index), col, fi, row)
-		if err != nil {
+		if err := t.setParsedValue(fieldToSet, col, fi, row); err != nil {
 			return "", err
-		}
-		if toContinue {
-			continue
 		}
 		if fi.isPrimaryKey {
 			primaryKey = strings.ToLower(strings.TrimSpace(row[t.headersToIndex[col]]))
 		}
 	}
+	sliceFV.Set(reflect.Append(sliceFV, firstElem))
 	return primaryKey, nil
 }
 
-func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldInfo, row []string) (err error, toContinue bool) {
+func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldInfo, row []string) error {
 	headerIndex, ok := t.headersToIndex[col]
 	if !ok {
 		if !info.required && !info.isPrimaryKey {
-			return nil, true
+			return nil
 		}
-		return fmt.Errorf("required column %s is not present", col), false
+		return fmt.Errorf("required column %s is not present", col)
 	}
 	rowVal := row[headerIndex]
 	// check if the field is optional and the value is empty
 	if rowVal == "" {
 		if !info.required && !info.isPrimaryKey {
-			return nil, true
+			return nil
 		}
-		return fmt.Errorf("required column %s is empty", col), false
+		return fmt.Errorf("required column %s is empty", col)
 	}
 	if parsed, err := parseStringIntoType(rowVal, v.Type()); err != nil {
-		return fmt.Errorf("error parsing cell value: %v", err), false
+		return fmt.Errorf("error parsing cell value: %v", err)
 	} else {
 		v.Set(reflect.ValueOf(parsed))
 	}
-	return nil, false
+	return nil
 }
 
 func (t *TypeReader[T]) analyzeType() error {

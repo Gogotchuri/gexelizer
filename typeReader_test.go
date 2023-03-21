@@ -3,6 +3,7 @@ package gexelizer
 import (
 	"bytes"
 	"testing"
+	"time"
 )
 
 func TestTypeReader_ReadExcelFile(t *testing.T) {
@@ -93,7 +94,7 @@ func TestWriteAndReadComplex(t *testing.T) {
 	}
 	type dates struct {
 		StartDate string
-		EndDate   string
+		EndDate   time.Time
 	}
 	type Employee struct {
 		Name string `gex:",primary"`
@@ -124,7 +125,7 @@ func TestWriteAndReadComplex(t *testing.T) {
 			Department: "IT",
 			Dates: dates{
 				StartDate: "01/01/2020",
-				EndDate:   "01/01/2021",
+				EndDate:   time.Now(),
 			},
 		},
 		{
@@ -141,7 +142,7 @@ func TestWriteAndReadComplex(t *testing.T) {
 			Department: "Finance",
 			Dates: dates{
 				StartDate: "01/01/2020",
-				EndDate:   "01/01/2021",
+				EndDate:   time.Now(),
 			},
 		},
 	}
@@ -177,6 +178,12 @@ func TestWriteAndReadComplex(t *testing.T) {
 		}
 		if tsR[i].Department != ts[i].Department {
 			t.Fatalf("expected %v, got %v", ts[i].Department, tsR[i].Department)
+		}
+		if tsR[i].Dates.StartDate != ts[i].Dates.StartDate {
+			t.Fatalf("expected %v, got %v", ts[i].Dates.StartDate, tsR[i].Dates.StartDate)
+		}
+		if tsR[i].Dates.EndDate.Equal(ts[i].Dates.EndDate) {
+			t.Fatalf("expected %v, got %v", ts[i].Dates.EndDate, tsR[i].Dates.EndDate)
 		}
 	}
 }
