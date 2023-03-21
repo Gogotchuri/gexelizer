@@ -15,6 +15,31 @@ type TypeWriter[T any] struct {
 	options        *Options
 }
 
+func WriteToFile[T any](filename string, data []T, opts ...Options) error {
+	tw, err := NewTypeWriter[T](opts...)
+	if err != nil {
+		return err
+	}
+	err = tw.Write(data)
+	if err != nil {
+		return err
+	}
+	return tw.WriteToFile(filename)
+}
+
+func WriteExcel[T any](writer io.Writer, data []T, opts ...Options) error {
+	tw, err := NewTypeWriter[T](opts...)
+	if err != nil {
+		return err
+	}
+	err = tw.Write(data)
+	if err != nil {
+		return err
+	}
+	_, err = tw.WriteTo(writer)
+	return err
+}
+
 // NewTypeWriter creates a new TypeWriter[T] instance
 // It returns an error if the type T cannot be written to excel
 // This function is heavier, so it is recommended to create a single instance and reuse it
@@ -139,29 +164,44 @@ func (r *singleWrite) setColumnValue(x int, value any) {
 
 func (w *TypeWriter[T]) writeSingle(row T) error {
 	sw := newRows(len(w.headers))
-	passedSlice := false
-	for i := 0; i < len(w.typeInfo.orderedColumns); i++ {
-		col := w.typeInfo.orderedColumns[i]
-		fieldInfo := w.typeInfo.nameToField[col]
-		fieldValue := reflect.ValueOf(row).FieldByIndex(fieldInfo.index)
-		if fieldInfo.kind == kindSlice {
-			// For each slice element, write a new row, and fill the rest of the columns with the previous value
-			for sf := 0; sf < fieldValue.Type().Elem().NumField(); sf++ { //TODO fix field iteration
-				i++ //Skip the slice column itself and write the slice elements
-				col = w.typeInfo.orderedColumns[i]
-				for j := 0; j < fieldValue.Len(); j++ { //For each slice struct property fill the column with the values
-					sliceElemInfo := w.typeInfo.nameToField[col]
-					sliceElemValue := fieldValue.Index(j).FieldByIndex(sliceElemInfo.index[1:])
-					sw.setCell(i-1, j, sliceElemValue.Interface())
-				}
+	if !w.typeInfo.containsSlice() {
+		for i := 0; i < len(w.typeInfo.orderedColumns); i++ {
+			col := w.typeInfo.orderedColumns[i]
+			fi := w.typeInfo.nameToField[col]
+			fv := reflect.ValueOf(row).FieldByIndex(fi.index)
+			sw.setColumnValue(i, fv.Interface())
+		}
+
+	} else {
+		passedSlice := false
+		sliceFI := *w.typeInfo.sliceFieldInfo
+		sliceFV := reflect.ValueOf(row).FieldByIndex(sliceFI.index)
+		for i := 0; i < len(w.typeInfo.orderedColumns); i++ {
+			col := w.typeInfo.orderedColumns[i]
+			fi := w.typeInfo.nameToField[col]
+			if fi.kind == kindSlice {
+				passedSlice = true
+				continue
 			}
-			passedSlice = true
-		} else {
+			if fi.isChildOf(sliceFI) {
+				// For each slice element, write a new row, and fill the rest of the columns with the previous value
+				for j := 0; j < sliceFV.Len(); j++ { //For each slice struct property fill the column with the values
+					elemIndex := fi.index[len(sliceFI.index):]
+					sliceElemValue := sliceFV.Index(j).FieldByIndex(elemIndex)
+					x := i
+					if passedSlice {
+						x -= 1
+					}
+					sw.setCell(x, j, sliceElemValue.Interface())
+				}
+				continue
+			}
+			fv := reflect.ValueOf(row).FieldByIndex(fi.index)
 			x := i
 			if passedSlice {
 				x -= 1
 			}
-			sw.setColumnValue(x, fieldValue.Interface())
+			sw.setColumnValue(x, fv.Interface())
 		}
 	}
 

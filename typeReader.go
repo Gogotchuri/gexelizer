@@ -19,6 +19,26 @@ type TypeReader[T any] struct {
 	previousPrimaryKey string
 }
 
+func ReadExcel[T any](reader io.Reader, opts ...Options) ([]T, error) {
+	r := &TypeReader[T]{}
+	file, err := readExcel(reader)
+	if err != nil {
+		return nil, err
+	}
+	r.file = file
+	if len(opts) > 0 {
+		r.options = &opts[0]
+	} else {
+		r.options = DefaultOptions()
+	}
+	r.options.HeaderRow -= 1
+	r.options.DataStartRow -= 1
+	r.nextRowToRead = r.options.HeaderRow
+	if err := r.analyzeType(); err != nil {
+		return nil, err
+	}
+	return r.Read()
+}
 func ReadExcelFile[T any](filename string, opts ...Options) ([]T, error) {
 	r := &TypeReader[T]{}
 	file, err := readExcelFile(filename)
@@ -74,61 +94,121 @@ func NewTypeReader[T any](reader io.Reader, opts ...Options) (*TypeReader[T], er
 // Read reads the prepared excel file and returns a slice of T objects or an error
 func (t *TypeReader[T]) Read() ([]T, error) {
 	var result []T
-	for t.nextRowToRead < uint(len(t.rows)) {
+	for i := 0; t.nextRowToRead < uint(len(t.rows)); i++ {
 		row := t.rows[t.nextRowToRead]
 		t.nextRowToRead++
 		var toRead T
-		if err := t.readSingle(row, &toRead); err != nil {
+		pk, err := t.readSingle(row, &toRead)
+		if err != nil {
 			return nil, err
 		}
-		result = append(result, toRead)
+		isFirstRow := i == 0
+		// if the primary key is different than the previous one, append the object to the result
+		if isFirstRow || !t.typeInfo.containsSlice() || t.previousPrimaryKey != pk {
+			t.previousPrimaryKey = pk
+			result = append(result, toRead)
+			continue
+		}
+		// if the primary key is the same as the previous one, append the slice element to the previous object
+		sliceIndexInT := t.typeInfo.sliceFieldInfo.index
+		previous := &(result[len(result)-1])
+		previousSlice := reflect.ValueOf(previous).Elem().FieldByIndex(sliceIndexInT)
+		currentSlice := reflect.ValueOf(toRead).FieldByIndex(sliceIndexInT)
+		previousSlice.Set(reflect.AppendSlice(previousSlice, currentSlice))
 	}
 	return result, nil
 }
 
 // ReadSingle reads a single row from the prepared excel file and returns the row parsed into T type object or an error
-// This function may advance the internal row counter, and parse other rows, if T contains a slice and the following row has the same primary key
-func (t *TypeReader[T]) readSingle(row []string, toRead *T) error {
+func (t *TypeReader[T]) readSingle(row []string, toRead *T) (string, error) {
 	v := reflect.ValueOf(toRead).Elem()
+	if !t.typeInfo.containsSlice() {
+		for i := 0; i < len(t.typeInfo.orderedColumns); i++ {
+			col := t.typeInfo.orderedColumns[i]
+			fi := t.typeInfo.nameToField[col]
+			err, toContinue := t.setParsedValue(v.FieldByIndex(fi.index), col, fi, row)
+			if err != nil {
+				return "", err
+			}
+			if toContinue {
+				continue
+			}
+		}
+		return "", nil
+	}
+	// if the type contains a slice, we need to read the slice elements as well
 	primaryKey := ""
-	for _, col := range t.typeInfo.orderedColumns {
+	passedSlice := false
+	sliceFI := *t.typeInfo.sliceFieldInfo
+	sliceFV := v.FieldByIndex(sliceFI.index)
+	firstElem := reflect.New(sliceFV.Type().Elem()).Elem()
+	for i := 0; i < len(t.typeInfo.orderedColumns); i++ {
+		col := t.typeInfo.orderedColumns[i]
 		fi := t.typeInfo.nameToField[col]
 		if fi.kind == kindSlice {
+			passedSlice = true
 			continue
 		}
-		headerIndex, ok := t.headersToIndex[col]
-		if !ok {
-			if !fi.required && !fi.isPrimaryKey {
-				continue
-			}
-			return fmt.Errorf("required column %s is not present", col)
+		if fi.isChildOf(sliceFI) {
+
 		}
-		rowVal := row[headerIndex]
-		// check if the field is optional and the value is empty
-		if rowVal == "" {
-			if !fi.required && !fi.isPrimaryKey {
+		sliceField := v.FieldByIndex(fi.index)
+		sliceValue := sliceField
+		newSlice := reflect.MakeSlice(sliceValue.Type(), 0, 1)
+		firstElem := reflect.New(sliceValue.Type().Elem()).Elem()
+		for sf := 0; sf < sliceField.Type().Elem().NumField(); sf++ {
+			i++ //Skip the slice column itself and write the slice elements
+			col = t.typeInfo.orderedColumns[i]
+			fi = t.typeInfo.nameToField[col]
+			sliceElemInfo := t.typeInfo.nameToField[col]
+			sliceElemValue := firstElem.FieldByIndex(sliceElemInfo.index[1:])
+			err, toContinue := t.setParsedValue(sliceElemValue, col, sliceElemInfo, row)
+			if err != nil {
+				return "", err
+			}
+			if toContinue {
 				continue
 			}
-			return fmt.Errorf("required column %s is empty", col)
+		}
+		newSlice = reflect.Append(newSlice, firstElem)
+		sliceValue.Set(newSlice)
+		continue
+		err, toContinue := t.setParsedValue(v.FieldByIndex(fi.index), col, fi, row)
+		if err != nil {
+			return "", err
+		}
+		if toContinue {
+			continue
 		}
 		if fi.isPrimaryKey {
-			primaryKey = rowVal
-		}
-		field := v.FieldByIndex(fi.index)
-		if parsed, err := parseStringIntoType(rowVal, field.Type()); err != nil {
-			return fmt.Errorf("error parsing cell value: %v", err)
-		} else {
-			field.Set(reflect.ValueOf(parsed))
+			primaryKey = strings.ToLower(strings.TrimSpace(row[t.headersToIndex[col]]))
 		}
 	}
-	if t.previousPrimaryKey == primaryKey {
-		// we are reading a slice
-		//TODO Implement slice reading
+	return primaryKey, nil
+}
+
+func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldInfo, row []string) (err error, toContinue bool) {
+	headerIndex, ok := t.headersToIndex[col]
+	if !ok {
+		if !info.required && !info.isPrimaryKey {
+			return nil, true
+		}
+		return fmt.Errorf("required column %s is not present", col), false
 	}
-	if primaryKey != "" {
-		t.previousPrimaryKey = primaryKey
+	rowVal := row[headerIndex]
+	// check if the field is optional and the value is empty
+	if rowVal == "" {
+		if !info.required && !info.isPrimaryKey {
+			return nil, true
+		}
+		return fmt.Errorf("required column %s is empty", col), false
 	}
-	return nil
+	if parsed, err := parseStringIntoType(rowVal, v.Type()); err != nil {
+		return fmt.Errorf("error parsing cell value: %v", err), false
+	} else {
+		v.Set(reflect.ValueOf(parsed))
+	}
+	return nil, false
 }
 
 func (t *TypeReader[T]) analyzeType() error {

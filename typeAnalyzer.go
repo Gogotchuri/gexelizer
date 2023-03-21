@@ -30,6 +30,18 @@ type fieldInfo struct {
 	required     bool
 }
 
+func (i fieldInfo) isChildOf(b fieldInfo) bool {
+	if len(i.index) <= len(b.index) {
+		return false
+	}
+	for k := 0; k < len(b.index); k++ {
+		if i.index[k] != b.index[k] {
+			return false
+		}
+	}
+	return true
+}
+
 func (i fieldInfo) equal(b fieldInfo) bool {
 	if len(i.index) != len(b.index) {
 		return false
@@ -47,6 +59,11 @@ type typeInfo struct {
 	primaryKeyName string
 	orderedColumns []string
 	nameToField    map[string]fieldInfo
+	sliceFieldInfo *fieldInfo
+}
+
+func (info typeInfo) containsSlice() bool {
+	return info.sliceFieldInfo != nil
 }
 
 func (info typeInfo) sortColumns() {
@@ -144,6 +161,7 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 					return typeInfo{}, fmt.Errorf("only one slice is allowed")
 				}
 				encounteredSlice = true
+				info.sliceFieldInfo = &fi
 				t := field.Type.Elem()
 				if t.Kind() == reflect.Ptr {
 					t = t.Elem()
