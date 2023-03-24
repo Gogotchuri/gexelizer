@@ -93,11 +93,11 @@ func TestWriteAndReadComplex(t *testing.T) {
 		Salary   float64
 	}
 	type dates struct {
-		StartDate string
+		StartDate string `gex:"Start Date"`
 		EndDate   time.Time
 	}
 	type Employee struct {
-		Name string `gex:",primary"`
+		Name string `gex:"primary"`
 		Sl   []positionStruct
 		Age  int
 	}

@@ -119,8 +119,8 @@ func TestTypeAnalyzer_PrimitiveFields(t *testing.T) {
 
 func TestTypeAnalyzer_TagName(t *testing.T) {
 	type tagName struct {
-		Two string `gex:"one"`
-		One string `gex:"two,"`
+		Two string `gex:"column:one"`
+		One string `gex:"column:two,"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(tagName{}),
@@ -142,8 +142,8 @@ func TestTypeAnalyzer_TagName(t *testing.T) {
 
 func TestTypeAnalyzer_TagOrder(t *testing.T) {
 	type tagOrder struct {
-		Two string `gex:"two,order:1"`
-		One string `gex:"one,order:0"`
+		Two string `gex:"column:two,order:1"`
+		One string `gex:"column:one,order:0"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(tagOrder{}),
@@ -165,8 +165,8 @@ func TestTypeAnalyzer_TagOrder(t *testing.T) {
 
 func TestTypeAnalyzer_TagPrimaryKey(t *testing.T) {
 	type tagPrimaryKey struct {
-		Two string `gex:"two,primary"`
-		One string `gex:"one"`
+		Two string `gex:"column:two,primary"`
+		One string `gex:"column:one"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(tagPrimaryKey{}),
@@ -188,8 +188,8 @@ func TestTypeAnalyzer_TagPrimaryKey(t *testing.T) {
 
 func TestTypeAnalyzer_TagPrimaryKeyMultiple(t *testing.T) {
 	type tagPrimaryKeyMultiple struct {
-		Two string `gex:"two,primary"`
-		One string `gex:"one,primary"`
+		Two string `gex:"column:two,primary"`
+		One string `gex:"column:one,primary"`
 	}
 	_, err := analyzeType(reflect.TypeOf(tagPrimaryKeyMultiple{}))
 	if err == nil {
@@ -200,7 +200,7 @@ func TestTypeAnalyzer_TagPrimaryKeyMultiple(t *testing.T) {
 func TestTypeAnalyzer_TagIgnore(t *testing.T) {
 	type tagIgnore struct {
 		Two string `gex:"-"`
-		One string `gex:"one"`
+		One string `gex:"column:one"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(tagIgnore{}),
@@ -221,13 +221,13 @@ func TestTypeAnalyzer_TagIgnore(t *testing.T) {
 
 func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 	type es struct {
-		One string `gex:"one"`
-		Two string `gex:"two"`
+		One string `gex:"column:one"`
+		Two string `gex:"column:two"`
 	}
 	type embeddedStruct struct {
 		es
-		Three string `gex:"three"`
-		Four  string `gex:"four"`
+		Three string `gex:"column:three"`
+		Four  string `gex:"column:four"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(embeddedStruct{}),
@@ -250,13 +250,13 @@ func TestTypeAnalyzer_EmbeddedStruct(t *testing.T) {
 }
 func TestTypeAnalyzer_PrefixedEmbeddedStruct(t *testing.T) {
 	type es struct {
-		One string `gex:"one"`
-		Two string `gex:"two"`
+		One string `gex:"column:one"`
+		Two string `gex:"column:two"`
 	}
 	type embeddedStruct struct {
 		es    `gex:"prefix:es_"`
-		Three string `gex:"three"`
-		Four  string `gex:"four"`
+		Three string `gex:"column:three"`
+		Four  string `gex:"column:four"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(embeddedStruct{}),
@@ -280,13 +280,13 @@ func TestTypeAnalyzer_PrefixedEmbeddedStruct(t *testing.T) {
 
 func TestTypeAnalyzer_StructField(t *testing.T) {
 	type sf struct {
-		One string `gex:"one"`
-		Two string `gex:"two"`
+		One string `gex:"column:one"`
+		Two string `gex:"column:two"`
 	}
 	type structField struct {
 		Sf    sf
-		Three string `gex:"three"`
-		Four  string `gex:"four"`
+		Three string `gex:"column:three"`
+		Four  string `gex:"column:four"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(structField{}),
@@ -309,13 +309,13 @@ func TestTypeAnalyzer_StructField(t *testing.T) {
 }
 func TestTypeAnalyzer_NamedStructField(t *testing.T) {
 	type sf struct {
-		One string `gex:"one"`
-		Two string `gex:"two"`
+		One string `gex:"column:one"`
+		Two string `gex:"column:two"`
 	}
 	type structField struct {
-		Sf    sf     `gex:"f"`
-		Three string `gex:"three"`
-		Four  string `gex:"four"`
+		Sf    sf     `gex:"column:f"`
+		Three string `gex:"column:three"`
+		Four  string `gex:"column:four"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(structField{}),
@@ -339,14 +339,14 @@ func TestTypeAnalyzer_NamedStructField(t *testing.T) {
 
 func TestTypeAnalyzer_StructFieldPrefixes(t *testing.T) {
 	type sf struct {
-		One string `gex:"one"`
-		Two string `gex:"two"`
+		One string `gex:"column:one"`
+		Two string `gex:"column:two"`
 	}
 	type structField struct {
-		Sf    sf     `gex:"f,prefix:foo."`
-		Sf1   sf     `gex:"sf,noprefix"`
-		Three string `gex:"three"`
-		Four  string `gex:"four"`
+		Sf    sf     `gex:"column:f,prefix:foo."`
+		Sf1   sf     `gex:"column:sf,noprefix"`
+		Three string `gex:"column:three"`
+		Four  string `gex:"column:four"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(structField{}),
@@ -373,13 +373,13 @@ func TestTypeAnalyzer_StructFieldPrefixes(t *testing.T) {
 
 func TestTypeAnalyzer_StructFieldPtr(t *testing.T) {
 	type sf struct {
-		One string `gex:"one,primary"`
-		Two string `gex:"two"`
+		One string `gex:"column:one,primary"`
+		Two string `gex:"column:two"`
 	}
 	type structFieldPtr struct {
 		Sf    *sf
-		Three string `gex:"three"`
-		Four  string `gex:"four"`
+		Three string `gex:"column:three"`
+		Four  string `gex:"column:four"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(structFieldPtr{}),
@@ -403,13 +403,13 @@ func TestTypeAnalyzer_StructFieldPtr(t *testing.T) {
 
 func TestTypeAnalyzer_StructFieldOrderTag(t *testing.T) {
 	type sf struct {
-		Two string `gex:"two,order:1"`
-		One string `gex:"one,order:0"`
+		Two string `gex:"column:two,order:1"`
+		One string `gex:"column:one,order:0"`
 	}
 	type structFieldOrderTag struct {
-		Sf    sf     `gex:"sf,order:0"`
-		Three string `gex:"three"`
-		Four  string `gex:"four"`
+		Sf    sf     `gex:"column:sf,order:0"`
+		Three string `gex:"column:three"`
+		Four  string `gex:"column:four"`
 	}
 	expected := typeInfo{
 		t:              reflect.TypeOf(structFieldOrderTag{}),
@@ -443,10 +443,10 @@ func TestTypeAnalyzer_PrimitiveSlice(t *testing.T) {
 
 func TestTypeAnalyzer_SliceStruct(t *testing.T) {
 	type sliceStruct struct {
-		One string `gex:"one"`
+		One string `gex:"column:one"`
 	}
 	type sliceStructSlice struct {
-		ID    int64         `gex:"id,primary"`
+		ID    int64         `gex:"column:id,primary"`
 		Slice []sliceStruct `gex:""`
 	}
 	expected := typeInfo{

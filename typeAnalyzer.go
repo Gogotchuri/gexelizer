@@ -206,9 +206,7 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 	index := make([]int, 0, len(currentNode.indexPrefix)+len(field.Index))
 	index = append(index, currentNode.indexPrefix...)
 	index = append(index, field.Index...)
-	tagOptions := parseTagOptions(field, i)
-	// Get field name
-	name := getFieldName(field)
+	tagOpts := parseTagOptions(field, i)
 	// Get field kind
 	typeKind, err := getKind(field.Type)
 	if err != nil {
@@ -221,25 +219,27 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 		}
 	}
 	// Get field prefix
-	prefix := getNextFieldPrefix(field, name, currentNode.columnPrefix, typeKind)
+	prefix := getNextFieldPrefix(field, tagOpts.column, currentNode.columnPrefix, typeKind)
 	return fieldInfo{
-		isPrimaryKey: tagOptions.primaryKey,
-		order:        tagOptions.order,
-		name:         currentNode.columnPrefix + name,
+		isPrimaryKey: tagOpts.primaryKey,
+		order:        tagOpts.order,
+		omitEmpty:    tagOpts.omitEmpty,
+		name:         currentNode.columnPrefix + tagOpts.column,
 		kind:         typeKind,
 		index:        index,
 		nextPrefix:   prefix, //For nested structs
-		required:     tagOptions.required,
-		defaultValue: tagOptions.defaultValue,
+		required:     tagOpts.required,
+		defaultValue: tagOpts.defaultValue,
 	}, nil
 }
 
 type tagOptions struct {
+	column       string
+	defaultValue string
 	order        int
 	primaryKey   bool
 	required     bool
 	omitEmpty    bool
-	defaultValue string
 }
 
 func parseTagOptions(field reflect.StructField, i int) tagOptions {
@@ -247,6 +247,13 @@ func parseTagOptions(field reflect.StructField, i int) tagOptions {
 	segments := strings.Split(tag, ",")
 	options := tagOptions{}
 	for _, o := range segments {
+		if strings.HasPrefix(o, "column:") {
+			col := strings.TrimPrefix(o, "column:")
+			if col != "" {
+				options.column = col
+			}
+			continue
+		}
 		//Order
 		if strings.HasPrefix(o, "order:") {
 			order, err := strconv.Atoi(strings.TrimPrefix(o, "order:"))
@@ -277,6 +284,9 @@ func parseTagOptions(field reflect.StructField, i int) tagOptions {
 			continue
 		}
 	}
+	if options.column == "" {
+		options.column = field.Name
+	}
 	return options
 }
 
@@ -302,19 +312,6 @@ func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k ki
 		return prefix
 	}
 	return prevPrefix
-}
-
-func getFieldName(field reflect.StructField) string {
-	// Tag has values separated by comma, first value is always the name, so we split it
-	tagValue := field.Tag.Get(DefaultTag)
-	if tagValue == "" {
-		return field.Name
-	}
-	name := strings.Split(tagValue, ",")[0]
-	if name == "" {
-		name = field.Name
-	}
-	return name
 }
 
 func isFieldIgnored(field reflect.StructField) bool {
