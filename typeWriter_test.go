@@ -1,6 +1,9 @@
 package gexelizer
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestExcel_WriteBasic(t *testing.T) {
 	type row struct {
@@ -36,6 +39,7 @@ func TestExcel_WriteStructWSlice(t *testing.T) {
 		Name string `gex:"name,primary"`
 		Age  int
 		Job  []sliceStruct
+		Date time.Time
 	}
 	writer, err := NewTypeWriter[row]()
 	if err != nil {
@@ -43,6 +47,7 @@ func TestExcel_WriteStructWSlice(t *testing.T) {
 	}
 	err = writer.writeSingle(row{
 		Name: "John",
+		Date: time.Now(),
 		Age:  20,
 		Job:  []sliceStruct{{"A"}, {"B"}},
 	})
@@ -101,7 +106,9 @@ func TestTypeWriter_WriteToFile(t *testing.T) {
 		Name string `gex:"name,primary"`
 		SL   []sliceStruct
 		Age  int
+		Date time.Time //TODO: add support for time.Time
 	}
+
 	writer, err := NewTypeWriter[row]()
 	if err != nil {
 		t.Fatal(err)
@@ -115,6 +122,7 @@ func TestTypeWriter_WriteToFile(t *testing.T) {
 		{
 			Name: "Jane",
 			Age:  21,
+			Date: time.Now(),
 			SL:   []sliceStruct{{"C"}, {"D"}},
 		},
 	})

@@ -154,14 +154,20 @@ func (t *TypeReader[T]) readSingle(row []string, toRead *T) (string, error) {
 }
 
 func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldInfo, row []string) error {
-	headerIndex, ok := t.headersToIndex[col]
-	if !ok {
+	headerIndex, columnExists := t.headersToIndex[col]
+	if !columnExists && info.defaultValue == "" {
 		if !info.required && !info.isPrimaryKey {
 			return nil
 		}
 		return fmt.Errorf("required column %s is not present", col)
 	}
-	rowVal := row[headerIndex]
+	var rowVal string
+	if columnExists {
+		rowVal = row[headerIndex]
+	}
+	if rowVal == "" && info.defaultValue != "" {
+		rowVal = info.defaultValue
+	}
 	// check if the field is optional and the value is empty
 	if rowVal == "" {
 		if !info.required && !info.isPrimaryKey {

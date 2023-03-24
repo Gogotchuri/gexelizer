@@ -28,6 +28,7 @@ type fieldInfo struct {
 	index        []int
 	kind         kind
 	required     bool
+	defaultValue string
 }
 
 func (i fieldInfo) isChildOf(b fieldInfo) bool {
@@ -228,13 +229,15 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 		index:        index,
 		nextPrefix:   prefix, //For nested structs
 		required:     tagOptions.required,
+		defaultValue: tagOptions.defaultValue,
 	}, nil
 }
 
 type tagOptions struct {
-	order      int
-	primaryKey bool
-	required   bool
+	order        int
+	primaryKey   bool
+	required     bool
+	defaultValue string
 }
 
 func parseTagOptions(field reflect.StructField, i int) tagOptions {
@@ -249,6 +252,11 @@ func parseTagOptions(field reflect.StructField, i int) tagOptions {
 				options.order = i
 			}
 			options.order = order
+			continue
+		}
+		//Default
+		if strings.HasPrefix(o, "default:") {
+			options.defaultValue = strings.TrimPrefix(o, "default:")
 			continue
 		}
 		//Required
