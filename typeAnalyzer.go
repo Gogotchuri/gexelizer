@@ -28,6 +28,7 @@ type fieldInfo struct {
 	index        []int
 	kind         kind
 	required     bool
+	omitEmpty    bool
 	defaultValue string
 }
 
@@ -237,6 +238,7 @@ type tagOptions struct {
 	order        int
 	primaryKey   bool
 	required     bool
+	omitEmpty    bool
 	defaultValue string
 }
 
@@ -264,6 +266,12 @@ func parseTagOptions(field reflect.StructField, i int) tagOptions {
 			options.required = true
 			continue
 		}
+		//OmitEmpty
+		if strings.TrimSpace(o) == "omitempty" {
+			options.omitEmpty = true
+			continue
+		}
+		//Primary Key
 		if strings.TrimSpace(o) == "primary" {
 			options.primaryKey = true
 			continue

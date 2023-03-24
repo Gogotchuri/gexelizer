@@ -8,9 +8,10 @@ import (
 )
 
 type TypeWriter[T any] struct {
-	file           ExcelFileWriter
-	typeInfo       typeInfo
-	headers        []string
+	file     ExcelFileWriter
+	typeInfo typeInfo
+	headers  []string
+	//TODO add support for omitEmpty
 	nextRowToWrite uint
 	options        *Options
 }
