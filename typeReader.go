@@ -84,8 +84,14 @@ func NewTypeReader[T any](reader io.Reader, opts ...Options) (*TypeReader[T], er
 }
 
 // Read reads the prepared excel file and returns a slice of T objects or an error
-func (t *TypeReader[T]) Read() ([]T, error) {
-	var result []T
+func (t *TypeReader[T]) Read() (result []T, err error) {
+	//panic recover
+	defer func() {
+		if r := recover(); r != nil {
+			result = nil
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
 	for i := 0; t.nextRowToRead < uint(len(t.rows)); i++ {
 		row := t.rows[t.nextRowToRead]
 		t.nextRowToRead++
@@ -190,7 +196,13 @@ func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldIn
 	return nil
 }
 
-func (t *TypeReader[T]) analyzeType() error {
+func (t *TypeReader[T]) analyzeType() (err error) {
+	//panic recover
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error analyzing type: %v", r)
+		}
+	}()
 	var toRead T
 	info, err := analyzeType(reflect.TypeOf(toRead))
 	if err != nil {

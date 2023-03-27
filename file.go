@@ -55,7 +55,14 @@ func readExcelFile(path string) (ExcelFileReader, error) {
 	return excel, nil
 }
 
-func readExcel(reader io.Reader) (ExcelFileReader, error) {
+func readExcel(reader io.Reader) (efr ExcelFileReader, err error) {
+	//panic recover
+	defer func() {
+		if r := recover(); r != nil {
+			efr = nil
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
 	file, err := excelize.OpenReader(reader)
 	if err != nil {
 		return nil, err

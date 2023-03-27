@@ -2,6 +2,7 @@ package gexelizer
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -46,8 +47,15 @@ func WriteExcel[T any](writer io.Writer, data []T, opts ...Options) error {
 // It returns an error if the type T cannot be written to excel
 // This function is heavier, so it is recommended to create a single instance and reuse it
 // Otherwise, it is recommended to make it parallel while you fetch data to writeSingle
-func NewTypeWriter[T any](opts ...Options) (*TypeWriter[T], error) {
-	w := &TypeWriter[T]{}
+func NewTypeWriter[T any](opts ...Options) (w *TypeWriter[T], err error) {
+	//panic recover
+	defer func() {
+		if r := recover(); r != nil {
+			w = nil
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+	w = &TypeWriter[T]{}
 	if err := w.analyzeType(); err != nil {
 		return nil, err
 	}
@@ -61,7 +69,13 @@ func NewTypeWriter[T any](opts ...Options) (*TypeWriter[T], error) {
 	return w, nil
 }
 
-func (w *TypeWriter[T]) Write(data []T) error {
+func (w *TypeWriter[T]) Write(data []T) (err error) {
+	//panic recover
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
 	if len(data) == 0 {
 		return nil
 	}
