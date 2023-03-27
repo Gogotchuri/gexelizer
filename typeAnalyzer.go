@@ -175,6 +175,7 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 						columnPrefix: fi.nextPrefix,
 					})
 				}
+				continue
 			} else if fi.kind == kindStruct || fi.kind == kindStructPtr {
 				t := field.Type
 				if fi.kind == kindStructPtr {

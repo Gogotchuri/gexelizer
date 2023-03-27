@@ -187,3 +187,74 @@ func TestWriteAndReadComplex(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteAndReadComplexWithDefault(t *testing.T) {
+	type positionStruct struct {
+		Position string `gex:"default:CEO"`
+	}
+	type Employee struct {
+		Name string `gex:"primary"`
+		PO   string `gex:"default:C"`
+		Pos  positionStruct
+		Sl   []positionStruct
+	}
+	ts := []Employee{
+		{
+			Name: "John",
+			PO:   "A",
+			Pos: positionStruct{
+				Position: "CEO",
+			},
+			Sl: []positionStruct{
+				{
+					Position: "CEO",
+				},
+			},
+		},
+		{
+			Name: "Jane",
+			Pos: positionStruct{
+				Position: "CTO",
+			},
+			Sl: []positionStruct{
+				{
+					Position: "CFO",
+				},
+			},
+		},
+		{
+			Name: "Jack",
+			PO:   "B",
+			Sl:   []positionStruct{},
+		},
+	}
+
+	buffer := &bytes.Buffer{}
+	if err := WriteExcel(buffer, ts); err != nil {
+		t.Fatal(err)
+	}
+	tsR, err := ReadExcel[Employee](buffer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v", tsR)
+	if len(tsR) != 3 {
+		t.Fatalf("expected 3 rows, got %v", len(tsR))
+	}
+	for i := range tsR {
+		if tsR[i].Name != ts[i].Name {
+			t.Fatalf("expected %v, got %v", ts[i].Name, tsR[i].Name)
+		}
+		if tsR[i].PO != ts[i].PO && tsR[i].PO != "C" {
+			t.Fatalf("expected %v, got %v", ts[i].PO, tsR[i].PO)
+		}
+		if tsR[i].Pos.Position != ts[i].Pos.Position && tsR[i].Pos.Position != "CEO" {
+			t.Fatalf("expected %v, got %v", ts[i].Pos.Position, tsR[i].Pos.Position)
+		}
+		for j := range ts[i].Sl {
+			if tsR[i].Sl[j].Position != ts[i].Sl[j].Position && tsR[i].Sl[j].Position != "CEO" {
+				t.Fatalf("expected %v, got %v", ts[i].Sl[j].Position, tsR[i].Sl[j].Position)
+			}
+		}
+	}
+}

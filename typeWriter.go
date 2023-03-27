@@ -2,7 +2,6 @@ package gexelizer
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -231,7 +230,9 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 			return err
 		}
 		for i, value := range row {
-			fmt.Printf("i:%d, len: %d, value: %v, isZero: %v\n", i, len(w.columnContainsValues), value, reflect.ValueOf(value).IsZero())
+			if value == nil {
+				continue
+			}
 			if !reflect.ValueOf(value).IsZero() {
 				w.columnContainsValues[i] = true
 			}

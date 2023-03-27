@@ -452,11 +452,10 @@ func TestTypeAnalyzer_SliceStruct(t *testing.T) {
 	expected := typeInfo{
 		t:              reflect.TypeOf(sliceStructSlice{}),
 		primaryKeyName: "id",
-		orderedColumns: []string{"id", "slice", "slice.one"},
+		orderedColumns: []string{"id", "slice.one"},
 		nameToField: map[string]fieldInfo{
 			"id":        {name: "id", order: 0, isPrimaryKey: true, index: []int{0}, kind: kindPrimitive},
-			"slice":     {name: "Slice", order: 1, isPrimaryKey: false, index: []int{1}, kind: kindSlice},
-			"slice.one": {name: "Slice.one", order: 2, isPrimaryKey: false, index: []int{1, 0}, kind: kindPrimitive},
+			"slice.one": {name: "Slice.one", order: 1, isPrimaryKey: false, index: []int{1, 0}, kind: kindPrimitive},
 		},
 	}
 	info, err := analyzeType(reflect.TypeOf(sliceStructSlice{}))

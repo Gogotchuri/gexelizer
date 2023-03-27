@@ -213,5 +213,12 @@ func (t *TypeReader[T]) analyzeType() error {
 		}
 	}
 	t.nextRowToRead = t.options.DataStartRow
+
+	// normalize matrix width
+	for i := range t.rows {
+		if len(t.rows[i]) < len(t.headers) {
+			t.rows[i] = append(t.rows[i], make([]string, len(t.headers)-len(t.rows[i]))...)
+		}
+	}
 	return nil
 }
