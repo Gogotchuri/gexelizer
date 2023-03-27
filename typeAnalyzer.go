@@ -188,8 +188,16 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 				continue
 			}
 			lowerName := strings.TrimSpace(strings.ToLower(fi.name))
-			if _, ok := info.nameToField[lowerName]; ok {
-				return typeInfo{}, fmt.Errorf("duplicate field name: %s", fi.name)
+			if existingFI, ok := info.nameToField[lowerName]; ok {
+				//If the existing field is deeper in the struct, we don't need to add it
+				if len(existingFI.index) < len(fi.index) {
+					continue
+				}
+				//If the existing field is at the same level, we error out
+				if len(existingFI.index) == len(fi.index) {
+					return typeInfo{}, fmt.Errorf("duplicate field name: %s", fi.name)
+				}
+				//If the existing field is in the upper levels of the struct, we just overwrite it
 			}
 			info.nameToField[lowerName] = fi
 			info.orderedColumns = append(info.orderedColumns, lowerName) //To be sorted later

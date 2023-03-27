@@ -16,6 +16,7 @@ type ExcelFileWriter interface {
 	SetRow(row uint, values []any) error
 	SetCellValue(axis string, value any) error
 	SetStringRow(row uint, values []string) error
+	RemoveColumn(column string) error
 	GetDefaultSheet() string
 }
 type ExcelFileReader interface {
@@ -30,6 +31,10 @@ var _ ExcelFileReader = (*excelFile)(nil)
 type excelFile struct {
 	file *excelize.File
 	rows [][]string
+}
+
+func (f *excelFile) RemoveColumn(column string) error {
+	return f.file.RemoveCol(f.GetDefaultSheet(), column)
 }
 
 func newExcel() ExcelFileWriter {

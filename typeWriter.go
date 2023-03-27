@@ -2,16 +2,18 @@ package gexelizer
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
 )
 
 type TypeWriter[T any] struct {
-	file     ExcelFileWriter
-	typeInfo typeInfo
-	headers  []string
-	//TODO add support for omitEmpty
+	file                 ExcelFileWriter
+	typeInfo             typeInfo
+	headers              []string
+	columnContainsValues []bool
+
 	nextRowToWrite uint
 	options        *Options
 }
@@ -78,7 +80,18 @@ func (w *TypeWriter[T]) Write(data []T) error {
 	return nil
 }
 
+func (w *TypeWriter[T]) removeEmptyColumns() {
+	for i := len(w.headers) - 1; i >= 0; i-- {
+		fi := w.typeInfo.nameToField[w.headers[i]]
+		if !w.columnContainsValues[i] && fi.omitEmpty {
+			_ = w.file.RemoveColumn(string(rune('A' + i)))
+		}
+	}
+}
+
 func (w *TypeWriter[T]) WriteToFile(filename string) error {
+	//Remove empty columns
+	w.removeEmptyColumns()
 	//Create file
 	if err := w.file.SaveAs(filename); err != nil {
 		return err
@@ -87,10 +100,14 @@ func (w *TypeWriter[T]) WriteToFile(filename string) error {
 }
 
 func (w *TypeWriter[T]) WriteTo(writer io.Writer) (int64, error) {
+	//Remove empty columns
+	w.removeEmptyColumns()
 	return w.file.WriteTo(writer)
 }
 
 func (w *TypeWriter[T]) WriteToBuffer() (*bytes.Buffer, error) {
+	//Remove empty columns
+	w.removeEmptyColumns()
 	return w.file.WriteToBuffer()
 }
 
@@ -115,8 +132,10 @@ func (w *TypeWriter[T]) analyzeType() error {
 
 func (w *TypeWriter[T]) writeHeaders() error {
 	capitalized := make([]string, len(w.headers))
+	w.columnContainsValues = make([]bool, len(w.headers))
 	for i, header := range w.headers {
 		capitalized[i] = strings.ToUpper(header[0:1]) + header[1:]
+		w.columnContainsValues[i] = false
 	}
 	return w.file.SetStringRow(w.options.HeaderRow, capitalized)
 }
@@ -172,7 +191,6 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 			fv := reflect.ValueOf(row).FieldByIndex(fi.index)
 			sw.setColumnValue(i, fv.Interface())
 		}
-
 	} else {
 		passedSlice := false
 		sliceFI := *w.typeInfo.sliceFieldInfo
@@ -205,10 +223,18 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 			sw.setColumnValue(x, fv.Interface())
 		}
 	}
-
+	if len(w.columnContainsValues) == 0 {
+		w.columnContainsValues = make([]bool, len(w.headers))
+	}
 	for _, row := range sw.rows {
 		if err := w.file.SetRow(w.nextRowToWrite, row); err != nil {
 			return err
+		}
+		for i, value := range row {
+			fmt.Printf("i:%d, len: %d, value: %v, isZero: %v\n", i, len(w.columnContainsValues), value, reflect.ValueOf(value).IsZero())
+			if !reflect.ValueOf(value).IsZero() {
+				w.columnContainsValues[i] = true
+			}
 		}
 		w.nextRowToWrite++
 	}

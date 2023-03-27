@@ -11,6 +11,8 @@ func parseStringIntoType(s string, t reflect.Type) (any, error) {
 	switch t.Kind() {
 	case reflect.String:
 		return s, nil
+	case reflect.Uint:
+		return parseUint(s)
 	case reflect.Int:
 		return parseInt(s)
 	case reflect.Int64:
@@ -19,10 +21,15 @@ func parseStringIntoType(s string, t reflect.Type) (any, error) {
 		return parseFloat(s)
 	case reflect.Bool:
 		return parseBool(s)
-	//case reflect.Struct: //TODO add decimal support
+	//case reflect.Struct: //TODO add Time and Decimal support
 	default:
 		return nil, fmt.Errorf("unsupported type %s", t.Kind())
 	}
+}
+
+func parseUint(s string) (uint, error) {
+	i, err := strconv.Atoi(s)
+	return uint(i), err
 }
 
 func parseInt(s string) (int, error) {
