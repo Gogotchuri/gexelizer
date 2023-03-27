@@ -118,8 +118,11 @@ func (t *TypeReader[T]) readSingle(row []string, toRead *T) (string, error) {
 		for i := 0; i < len(t.typeInfo.orderedColumns); i++ {
 			col := t.typeInfo.orderedColumns[i]
 			fi := t.typeInfo.nameToField[col]
-			err := t.setParsedValue(v.FieldByIndex(fi.index), col, fi, row)
+			fv, err := v.FieldByIndexErr(fi.index)
 			if err != nil {
+				continue
+			}
+			if err = t.setParsedValue(fv, col, fi, row); err != nil {
 				return "", err
 			}
 		}
@@ -137,10 +140,14 @@ func (t *TypeReader[T]) readSingle(row []string, toRead *T) (string, error) {
 			continue
 		}
 		var fieldToSet reflect.Value
+		var err error
 		if fi.isChildOf(sliceFI) {
-			fieldToSet = firstElem.FieldByIndex(fi.index[len(sliceFI.index):])
+			fieldToSet, err = firstElem.FieldByIndexErr(fi.index[len(sliceFI.index):])
 		} else {
-			fieldToSet = v.FieldByIndex(fi.index)
+			fieldToSet, err = v.FieldByIndexErr(fi.index)
+		}
+		if err != nil {
+			continue
 		}
 		if err := t.setParsedValue(fieldToSet, col, fi, row); err != nil {
 			return "", err

@@ -187,7 +187,10 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 		for i := 0; i < len(w.typeInfo.orderedColumns); i++ {
 			col := w.typeInfo.orderedColumns[i]
 			fi := w.typeInfo.nameToField[col]
-			fv := reflect.ValueOf(row).FieldByIndex(fi.index)
+			fv, err := reflect.ValueOf(row).FieldByIndexErr(fi.index)
+			if err != nil || (fi.kind == kindStructPtr && fv.IsNil()) {
+				continue
+			}
 			sw.setColumnValue(i, fv.Interface())
 		}
 	} else {

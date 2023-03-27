@@ -272,3 +272,47 @@ func TestTypeWriter_WriteToBufferOmitempty(t *testing.T) {
 		t.Fatal("Should have 1 column")
 	}
 }
+
+func TestTypeWriter_WriteBufferNilOmitempty(t *testing.T) {
+	type address struct {
+		Street string `gex:"column:street"`
+	}
+	type row struct {
+		Name     string   `gex:"column:name,primary"`
+		Address  *address `gex:"omitempty"`
+		Shipping address  `gex:"noprefix,omitempty"`
+	}
+	writer, err := NewTypeWriter[row]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writer.Write([]row{
+		{
+			Name: "John",
+		},
+		{
+			Name: "Jane",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	buffer, err := writer.WriteToBuffer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	//ReadExcel
+	excel, err := ReadExcel[row](buffer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if excel[0].Name != "John" {
+		t.Fatal("Name should be John")
+	}
+	if excel[0].Address != nil {
+		t.Fatal("Should be nil")
+	}
+	if excel[0].Shipping.Street != "" {
+		t.Fatal("Should be empty")
+	}
+}
