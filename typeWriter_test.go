@@ -275,7 +275,7 @@ func TestTypeWriter_WriteToBufferOmitempty(t *testing.T) {
 
 func TestTypeWriter_WriteBufferNilOmitempty(t *testing.T) {
 	type address struct {
-		Street string `gex:"column:street"`
+		Street string `gex:"column:street,required"`
 	}
 	type row struct {
 		Name     string   `gex:"column:name,primary"`

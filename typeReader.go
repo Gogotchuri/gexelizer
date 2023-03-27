@@ -186,6 +186,7 @@ func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldIn
 		if !info.required && !info.isPrimaryKey {
 			return nil
 		}
+		//TODO here we have an issue, if struct is not present at all this required shouldn't be taken into consideration
 		return fmt.Errorf("required column %s is empty", col)
 	}
 	if parsed, err := parseStringIntoType(rowVal, v.Type()); err != nil {
