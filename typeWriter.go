@@ -96,7 +96,7 @@ func (w *TypeWriter[T]) Write(data []T) (err error) {
 func (w *TypeWriter[T]) removeEmptyColumns() {
 	for i := len(w.headers) - 1; i >= 0; i-- {
 		fi := w.typeInfo.nameToField[w.headers[i]]
-		if !w.columnContainsValues[i] && fi.omitEmpty {
+		if !w.columnContainsValues[i] && (fi.omitEmpty || len(fi.index) > 1) {
 			_ = w.file.RemoveColumn(string(rune('A' + i)))
 		}
 	}

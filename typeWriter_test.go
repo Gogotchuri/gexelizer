@@ -232,9 +232,13 @@ func TestTypeWriter_TestOverwriteEmbedded(t *testing.T) {
 }
 
 func TestTypeWriter_WriteToBufferOmitempty(t *testing.T) {
+	type position struct {
+		Position string
+	}
 	type row struct {
-		Name string `gex:"column:name,primary"`
-		Age  int    `gex:"omitempty"`
+		Name string    `gex:"column:name,primary"`
+		Age  int       `gex:"omitempty"`
+		P    *position `gex:"omitempty"`
 	}
 	writer, err := NewTypeWriter[row]()
 	if err != nil {
@@ -275,7 +279,8 @@ func TestTypeWriter_WriteToBufferOmitempty(t *testing.T) {
 
 func TestTypeWriter_WriteBufferNilOmitempty(t *testing.T) {
 	type address struct {
-		Street string `gex:"column:street,required"`
+		Street string `gex:"column:street"`
+		//Street string `gex:"column:street,required"`
 	}
 	type row struct {
 		Name     string   `gex:"column:name,primary"`
