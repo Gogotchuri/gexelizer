@@ -3,6 +3,7 @@ package gexelizer
 import (
 	"bytes"
 	"fmt"
+	"github.com/xuri/excelize/v2"
 	"io"
 	"reflect"
 	"strings"
@@ -97,7 +98,11 @@ func (w *TypeWriter[T]) removeEmptyColumns() {
 	for i := len(w.headers) - 1; i >= 0; i-- {
 		fi := w.typeInfo.nameToField[w.headers[i]]
 		if !w.columnContainsValues[i] && (fi.omitEmpty || len(fi.index) > 1) {
-			_ = w.file.RemoveColumn(string(rune('A' + i)))
+			name, err := excelize.ColumnNumberToName(i + 1)
+			if err != nil {
+				continue
+			}
+			_ = w.file.RemoveColumn(name)
 		}
 	}
 }
