@@ -192,6 +192,10 @@ func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldIn
 	if parsed, err := parseStringIntoType(rowVal, v.Type()); err != nil {
 		return fmt.Errorf("error parsing cell value: %v", err)
 	} else {
+		//TODO wrapper types are not supported
+		if v.Type() == reflect.TypeOf(Date("")) {
+			parsed = Date(rowVal)
+		}
 		v.Set(reflect.ValueOf(parsed))
 	}
 	return nil
