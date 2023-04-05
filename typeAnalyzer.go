@@ -308,7 +308,7 @@ func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k ki
 			noPrefix = true
 		}
 		if strings.HasPrefix(strings.TrimSpace(segment), "prefix:") {
-			prefix = prevPrefix + strings.TrimSpace(strings.TrimPrefix(segment, "prefix:"))
+			prefix = prevPrefix + strings.TrimPrefix(segment, "prefix:")
 		}
 	}
 	if noPrefix || (field.Anonymous && prefix == "") {

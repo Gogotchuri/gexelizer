@@ -222,7 +222,10 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 				// For each slice element, write a new row, and fill the rest of the columns with the previous value
 				for j := 0; j < sliceFV.Len(); j++ { //For each slice struct property fill the column with the values
 					elemIndex := fi.index[len(sliceFI.index):]
-					sliceElemValue := sliceFV.Index(j).FieldByIndex(elemIndex)
+					sliceElemValue, err := sliceFV.Index(j).FieldByIndexErr(elemIndex)
+					if err != nil {
+						continue
+					}
 					x := i
 					if passedSlice {
 						x -= 1
@@ -231,7 +234,10 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 				}
 				continue
 			}
-			fv := reflect.ValueOf(row).FieldByIndex(fi.index)
+			fv, err := reflect.ValueOf(row).FieldByIndexErr(fi.index)
+			if err != nil {
+				continue
+			}
 			x := i
 			if passedSlice {
 				x -= 1
