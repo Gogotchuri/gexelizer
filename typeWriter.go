@@ -235,7 +235,7 @@ func (w *TypeWriter[T]) writeSingle(row T) error {
 				continue
 			}
 			fv, err := reflect.ValueOf(row).FieldByIndexErr(fi.index)
-			if err != nil {
+			if err != nil || (fi.kind == kindStructPtr && fv.IsNil()) {
 				continue
 			}
 			x := i
