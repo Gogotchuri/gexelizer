@@ -266,12 +266,24 @@ func (t *TypeReader[T]) readSingleWithoutSlice(row []string, v reflect.Value) er
 }
 
 func (t *TypeReader[T]) readNonSliceField(v reflect.Value, fi fieldInfo, col string, row []string) (toContinue bool, err error) {
-	parent, err := v.FieldByIndexErr(fi.index[:len(fi.index)-1])
+	var parent, grandParent reflect.Value
+	parent, err = v.FieldByIndexErr(fi.index[:len(fi.index)-1])
 	parentForced := false
+	grandParentForced := false
 	if err == nil {
 		if parent.Kind() == reflect.Ptr && parent.Type().Elem().Kind() == reflect.Struct && parent.IsNil() {
 			parentForced = true
 			parent.Set(reflect.New(parent.Type().Elem()))
+		}
+	} else if err != nil && len(fi.index) > 2 {
+		// try to find the grandparent
+		grandParent, err = v.FieldByIndexErr(fi.index[:len(fi.index)-2])
+		if err != nil {
+			return true, err
+		}
+		if grandParent.Kind() == reflect.Ptr && grandParent.Type().Elem().Kind() == reflect.Struct && grandParent.IsNil() {
+			grandParentForced = true
+			grandParent.Set(reflect.New(grandParent.Type().Elem()))
 		}
 	} else if err != nil {
 		return true, err
@@ -281,14 +293,45 @@ func (t *TypeReader[T]) readNonSliceField(v reflect.Value, fi fieldInfo, col str
 		if parentForced {
 			parent.Set(reflect.Zero(parent.Type()))
 		}
+		if grandParentForced {
+			grandParent.Set(reflect.Zero(grandParent.Type()))
+		}
 		return true, err
 	}
 	isEmpty, err := t.setParsedValue(fieldToSet, col, fi, row)
-	if isEmpty && parentForced {
-		parent.Set(reflect.Zero(parent.Type()))
+	if isEmpty {
+		if parentForced {
+			parent.Set(reflect.Zero(parent.Type()))
+		}
+		if grandParentForced {
+			grandParent.Set(reflect.Zero(grandParent.Type()))
+		}
 	}
 	if err != nil {
 		return false, err
 	}
 	return false, nil
+}
+func fieldByIndexInit(v reflect.Value, index []int) (reflect.Value, error) {
+	if len(index) == 1 {
+		return v.Field(index[0]), nil
+	}
+
+	if v.Kind() != reflect.Struct {
+		return reflect.Value{}, fmt.Errorf("reflect: FieldByIndex of non-struct type " + v.Type().Name())
+	}
+	for i, x := range index {
+		if i > 0 {
+			if v.Kind() == reflect.Ptr && v.Type().Elem().Kind() == reflect.Struct {
+				if v.IsNil() {
+					//return reflect.Value{}, errors.New("reflect: indirection through nil pointer to embedded struct field " + v.Type().Elem().Name())
+					//initiate the pointer
+					v.Set(reflect.New(v.Type().Elem()))
+				}
+				v = v.Elem()
+			}
+		}
+		v = v.Field(x)
+	}
+	return v, nil
 }
