@@ -254,7 +254,7 @@ func (t *TypeReader[T]) readSingleWithoutSlice(row []string, v reflect.Value) er
 	for i := 0; i < len(t.typeInfo.orderedColumns); i++ {
 		col := t.typeInfo.orderedColumns[i]
 		fi := t.typeInfo.nameToField[col]
-		fv, err := v.FieldByIndexErr(fi.index)
+		fv, err := fieldByIndexInit(v, fi.index)
 		if err != nil {
 			continue
 		}
