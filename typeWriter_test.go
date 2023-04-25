@@ -314,6 +314,7 @@ func TestTypeWriter_WriteBufferNilOmitempty(t *testing.T) {
 	if excel[0].Name != "John" {
 		t.Fatal("Name should be John")
 	}
+	//TODO: should be nil
 	if excel[0].Address != nil {
 		t.Fatal("Should be nil")
 	}

@@ -11,9 +11,9 @@ func TestTypeReader_ReadExcelFile(t *testing.T) {
 		Position string `gex:""`
 	}
 	type row struct {
-		Name string `gex:",primary"`
+		Name string `gex:"primary"`
 		Sl   []positionStruct
-		Age  int
+		Age  int `gex:"aliases:oldeth"`
 	}
 	ts, err := ReadExcelFile[row]("test.xlsx")
 	if err != nil {

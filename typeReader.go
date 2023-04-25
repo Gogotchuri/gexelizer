@@ -231,6 +231,13 @@ func (t *TypeReader[T]) analyzeType() (err error) {
 	t.headersToIndex = make(map[string]int, len(t.headers))
 	for i, header := range t.headers {
 		t.headersToIndex[header] = i
+		//Add index for the primary column title in case this is an alias
+		fi, exists := t.typeInfo.nameToField[header]
+		if !exists {
+			continue
+		}
+		lowerName := strings.ToLower(fi.name)
+		t.headersToIndex[lowerName] = i
 	}
 	//Check if all required fields are present
 	for _, col := range t.typeInfo.orderedColumns {

@@ -8,20 +8,9 @@ import (
 	"strings"
 )
 
-const DefaultTag = "gex"
-
-type kind int
-
-const (
-	kindPrimitive kind = iota
-	kindSlice
-	kindStruct
-	kindPrimitivePtr
-	kindStructPtr
-)
-
 type fieldInfo struct {
 	name         string
+	aliases      []string
 	order        int
 	nextPrefix   string
 	isPrimaryKey bool
@@ -190,18 +179,38 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 			}
 			lowerName := strings.TrimSpace(strings.ToLower(fi.name))
 			if existingFI, ok := info.nameToField[lowerName]; ok {
-				//If the existing field is deeper in the struct, we don't need to add it
-				if len(existingFI.index) < len(fi.index) {
-					continue
+				//If the new field is shallower in the struct, need to add it
+				if len(existingFI.index) > len(fi.index) {
+					info.nameToField[lowerName] = fi
+					info.orderedColumns = append(info.orderedColumns, lowerName) //To be sorted later
 				}
-				//If the existing field is at the same level, we error out
+				//If the new field is at the same level, we error out
 				if len(existingFI.index) == len(fi.index) {
 					return typeInfo{}, fmt.Errorf("duplicate field name: %s", fi.name)
 				}
-				//If the existing field is in the upper levels of the struct, we just overwrite it
+				//If the new field is in the deeper levels of the struct, we just ignore it
+			} else {
+				info.nameToField[lowerName] = fi
+				info.orderedColumns = append(info.orderedColumns, lowerName) //To be sorted later
 			}
-			info.nameToField[lowerName] = fi
-			info.orderedColumns = append(info.orderedColumns, lowerName) //To be sorted later
+
+			//Go over and assign for aliases
+			for _, alias := range fi.aliases {
+				lowerName := strings.TrimSpace(strings.ToLower(alias))
+				if existingFI, ok := info.nameToField[lowerName]; ok {
+					//If the new field is shallower in the struct, we need to add it
+					if len(existingFI.index) > len(fi.index) {
+						info.nameToField[lowerName] = fi
+					}
+					//If the new field is at the same level, we error out
+					if len(existingFI.index) == len(fi.index) {
+						return typeInfo{}, fmt.Errorf("duplicate field name through alias: %s", lowerName)
+					}
+					//If the new field is in the upper levels of the struct, we just overwrite it
+				} else {
+					info.nameToField[lowerName] = fi
+				}
+			}
 		}
 	}
 	if info.primaryKeyName == "" && encounteredSlice {
@@ -233,6 +242,7 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 		isPrimaryKey: tagOpts.primaryKey,
 		order:        tagOpts.order,
 		omitEmpty:    tagOpts.omitEmpty,
+		aliases:      tagOpts.aliases,
 		name:         currentNode.columnPrefix + tagOpts.column,
 		kind:         typeKind,
 		index:        index,
@@ -249,23 +259,35 @@ type tagOptions struct {
 	primaryKey   bool
 	required     bool
 	omitEmpty    bool
+	aliases      []string
 }
 
 func parseTagOptions(field reflect.StructField, i int) tagOptions {
-	tag := field.Tag.Get(DefaultTag)
-	segments := strings.Split(tag, ",")
+	tag := field.Tag.Get(mainTag)
+	segments := strings.Split(tag, mainSeparator)
 	options := tagOptions{}
 	for _, o := range segments {
-		if strings.HasPrefix(o, "column:") {
-			col := strings.TrimPrefix(o, "column:")
+		//Column aliases
+		if strings.HasPrefix(o, aliasesTag) {
+			alias := strings.TrimPrefix(o, aliasesTag)
+			if alias != "" {
+				aliasesList := strings.Split(alias, listSeparator)
+				options.aliases = append(options.aliases, aliasesList...)
+			}
+			continue
+		}
+
+		//Column primary name
+		if strings.HasPrefix(o, columnTag) {
+			col := strings.TrimPrefix(o, columnTag)
 			if col != "" {
 				options.column = col
 			}
 			continue
 		}
 		//Order
-		if strings.HasPrefix(o, "order:") {
-			order, err := strconv.Atoi(strings.TrimPrefix(o, "order:"))
+		if strings.HasPrefix(o, orderTag) {
+			order, err := strconv.Atoi(strings.TrimPrefix(o, orderTag))
 			if err != nil {
 				options.order = i
 			}
@@ -273,22 +295,22 @@ func parseTagOptions(field reflect.StructField, i int) tagOptions {
 			continue
 		}
 		//Default
-		if strings.HasPrefix(o, "default:") {
-			options.defaultValue = strings.TrimPrefix(o, "default:")
+		if strings.HasPrefix(o, defaultTag) {
+			options.defaultValue = strings.TrimPrefix(o, defaultTag)
 			continue
 		}
 		//Required
-		if strings.TrimSpace(o) == "required" {
+		if strings.TrimSpace(o) == requiredTag {
 			options.required = true
 			continue
 		}
 		//OmitEmpty
-		if strings.TrimSpace(o) == "omitempty" {
+		if strings.TrimSpace(o) == omitEmptyTag {
 			options.omitEmpty = true
 			continue
 		}
 		//Primary Key
-		if strings.TrimSpace(o) == "primary" {
+		if strings.TrimSpace(o) == primaryKeyTag {
 			options.primaryKey = true
 			continue
 		}
@@ -301,14 +323,14 @@ func parseTagOptions(field reflect.StructField, i int) tagOptions {
 
 func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k kind) string {
 	prefix := ""
-	segments := strings.Split(field.Tag.Get(DefaultTag), ",")
+	segments := strings.Split(field.Tag.Get(mainTag), mainSeparator)
 	noPrefix := false
 	for _, segment := range segments {
-		if strings.TrimSpace(segment) == "noprefix" {
+		if strings.TrimSpace(segment) == noprefixTag {
 			noPrefix = true
 		}
-		if strings.HasPrefix(strings.TrimSpace(segment), "prefix:") {
-			prefix = prevPrefix + strings.TrimPrefix(segment, "prefix:")
+		if strings.HasPrefix(strings.TrimSpace(segment), prefixTag) {
+			prefix = prevPrefix + strings.TrimPrefix(segment, prefixTag)
 		}
 	}
 	if noPrefix || (field.Anonymous && prefix == "") {
@@ -324,7 +346,7 @@ func getNextFieldPrefix(field reflect.StructField, name, prevPrefix string, k ki
 }
 
 func isFieldIgnored(field reflect.StructField) bool {
-	return field.Tag.Get(DefaultTag) == "-"
+	return field.Tag.Get(mainTag) == ignoreTag
 }
 
 func isUnexported(field reflect.StructField) bool {
