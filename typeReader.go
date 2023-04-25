@@ -221,6 +221,10 @@ func (t *TypeReader[T]) analyzeType() (err error) {
 	if err != nil {
 		return err
 	}
+	//trim empty rows or rows with one column from the beginning and end
+	if t.options.TrimEmptyRows {
+		t.rows = trimEmptyRows(t.rows)
+	}
 	if len(t.rows) < int(t.options.HeaderRow) {
 		return fmt.Errorf("header row is out of bounds")
 	}
@@ -249,12 +253,38 @@ func (t *TypeReader[T]) analyzeType() (err error) {
 	t.nextRowToRead = t.options.DataStartRow
 
 	// normalize matrix width
-	for i := range t.rows {
+	for i := 0; i < len(t.rows); i++ {
+		if t.options.TrimEmptyRows && len(t.rows[i]) == 0 {
+			//Remove empty rows
+			t.rows = append(t.rows[:i], t.rows[i+1:]...)
+			i--
+			continue
+		}
 		if len(t.rows[i]) < len(t.headers) {
 			t.rows[i] = append(t.rows[i], make([]string, len(t.headers)-len(t.rows[i]))...)
 		}
 	}
 	return nil
+}
+
+func trimEmptyRows(rows [][]string) [][]string {
+	//Remove row from the beginning if they are empty or have one column
+	trimFromBeginning := 0
+	for i := 0; i < len(rows); i++ {
+		if len(rows[i]) > 1 {
+			break
+		}
+		trimFromBeginning++
+	}
+	//Remove row from the end if they are empty or have one column
+	trimFromEnd := 0
+	for i := len(rows) - 1; i >= 0; i-- {
+		if len(rows[i]) > 1 {
+			break
+		}
+		trimFromEnd++
+	}
+	return rows[trimFromBeginning : len(rows)-trimFromEnd]
 }
 
 func (t *TypeReader[T]) readSingleWithoutSlice(row []string, v reflect.Value) error {

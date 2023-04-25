@@ -1,13 +1,15 @@
 package gexelizer
 
 type Options struct {
-	DataStartRow uint
-	HeaderRow    uint
+	DataStartRow  uint
+	HeaderRow     uint
+	TrimEmptyRows bool
 }
 
 func DefaultOptions() *Options {
 	return &Options{
-		DataStartRow: 2,
-		HeaderRow:    1,
+		DataStartRow:  2,
+		HeaderRow:     1,
+		TrimEmptyRows: true,
 	}
 }
