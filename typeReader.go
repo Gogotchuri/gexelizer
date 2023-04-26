@@ -289,6 +289,23 @@ func (t *TypeReader[T]) analyzeType() (err error) {
 }
 
 func trimEmptyRows(rows [][]string) [][]string {
+	//Scan rows from the beginning to the end and trim empty rows
+	for i := 0; i < len(rows); i++ {
+		if len(rows[i]) == 0 {
+			continue
+		}
+		row := rows[i]
+		//Trim empty string elements from the end
+		lastNonEmpty := len(row) - 1
+		for lastNonEmpty >= 0 && row[lastNonEmpty] == "" {
+			lastNonEmpty--
+		}
+		if lastNonEmpty < 0 {
+			rows[i] = nil
+			continue
+		}
+		rows[i] = row[:lastNonEmpty+1]
+	}
 	//Remove row from the beginning if they are empty or have one column
 	trimFromBeginning := 0
 	for i := 0; i < len(rows); i++ {
