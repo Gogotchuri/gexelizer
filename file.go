@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/shakinm/xlsReader/xls"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/encoding/unicode"
 	"io"
+	"unicode/utf8"
 )
 
 type ExcelFileWriter interface {
@@ -49,7 +51,15 @@ func (x xlsFile) GetDefaultSheetRows() ([][]string, error) {
 		cols := row.GetCols()
 		rows[i] = make([]string, len(cols))
 		for j, cell := range cols {
-			rows[i][j] = cell.GetString()
+			s := cell.GetString()
+			if utf8.ValidString(s) {
+				rows[i][j] = s
+			} else {
+				decoder := unicode.UTF8.NewDecoder()
+				s, _ = decoder.String(s)
+				//Decode to UTF-8
+				rows[i][j] = s
+			}
 		}
 	}
 	return rows, nil
