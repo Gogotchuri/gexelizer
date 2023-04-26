@@ -19,6 +19,27 @@ type TypeReader[T any] struct {
 	previousPrimaryKey string
 }
 
+func ReadXLSExcel[T any](reader io.ReadSeeker, opts ...Options) ([]T, error) {
+	r := &TypeReader[T]{}
+	file, err := readXLSExcel(reader)
+	if err != nil {
+		return nil, err
+	}
+	r.file = file
+	if len(opts) > 0 {
+		r.options = &opts[0]
+	} else {
+		r.options = DefaultOptions()
+	}
+	r.options.HeaderRow -= 1
+	r.options.DataStartRow -= 1
+	r.nextRowToRead = r.options.HeaderRow
+	if err := r.analyzeType(); err != nil {
+		return nil, err
+	}
+	return r.Read()
+}
+
 func ReadExcel[T any](reader io.Reader, opts ...Options) ([]T, error) {
 	r := &TypeReader[T]{}
 	file, err := readExcel(reader)

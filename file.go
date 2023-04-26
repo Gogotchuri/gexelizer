@@ -3,6 +3,7 @@ package gexelizer
 import (
 	"bytes"
 	"fmt"
+	"github.com/shakinm/xlsReader/xls"
 	"github.com/xuri/excelize/v2"
 	"io"
 )
@@ -21,16 +22,37 @@ type ExcelFileWriter interface {
 }
 type ExcelFileReader interface {
 	GetDefaultSheetRows() ([][]string, error)
-	GetRows(sheet string) ([][]string, error)
-	GetDefaultSheet() string
 }
 
 var _ ExcelFileWriter = (*excelFile)(nil)
 var _ ExcelFileReader = (*excelFile)(nil)
+var _ ExcelFileReader = (*xlsFile)(nil)
 
 type excelFile struct {
 	file *excelize.File
 	rows [][]string
+}
+
+type xlsFile struct {
+	file *xls.Workbook
+	rows [][]string
+}
+
+func (x xlsFile) GetDefaultSheetRows() ([][]string, error) {
+	sh, err := x.file.GetSheet(0)
+	if err != nil {
+		return nil, err
+	}
+	fancyRows := sh.GetRows()
+	rows := make([][]string, len(fancyRows))
+	for i, row := range fancyRows {
+		cols := row.GetCols()
+		rows[i] = make([]string, len(cols))
+		for j, cell := range cols {
+			rows[i][j] = cell.GetString()
+		}
+	}
+	return rows, nil
 }
 
 func (f *excelFile) RemoveColumn(column string) error {
@@ -50,6 +72,25 @@ func readExcelFile(path string) (ExcelFileReader, error) {
 	}
 	excel := &excelFile{
 		file: file,
+	}
+	excel.rows, err = excel.GetDefaultSheetRows()
+	return excel, nil
+}
+
+func readXLSExcel(reader io.ReadSeeker) (efr ExcelFileReader, err error) {
+	//panic recover
+	defer func() {
+		if r := recover(); r != nil {
+			efr = nil
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+	workbook, err := xls.OpenReader(reader)
+	if err != nil {
+		return nil, err
+	}
+	excel := &xlsFile{
+		file: &workbook,
 	}
 	excel.rows, err = excel.GetDefaultSheetRows()
 	return excel, nil
