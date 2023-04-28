@@ -119,6 +119,10 @@ func (t *TypeReader[T]) Read() (result []T, err error) {
 		var toRead T
 		pk, err := t.readSingle(row, &toRead)
 		if err != nil {
+			if rowErr, ok := err.(RowError); ok {
+				rowErr.RowNumber = int(t.nextRowToRead)
+				return nil, rowErr
+			}
 			return nil, err
 		}
 		isFirstRow := i == 0
@@ -211,10 +215,10 @@ func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldIn
 			return true, nil
 		}
 		//TODO here we have an issue, if struct is not present at all, required shouldn't be taken into consideration
-		return true, fmt.Errorf("required column %s is empty", col)
+		return true, newNonIndexedRowError(fmt.Errorf("required column %s is empty", col))
 	}
 	if parsed, err := parseStringIntoType(rowVal, v.Type()); err != nil {
-		return false, fmt.Errorf("error parsing cell value: %v", err)
+		return false, newNonIndexedRowError(fmt.Errorf("error parsing cell value: %v", err))
 	} else {
 		//TODO wrapper types are not supported
 		if v.Type() == reflect.TypeOf(Date("")) {
@@ -341,6 +345,7 @@ func (t *TypeReader[T]) readSingleWithoutSlice(row []string, v reflect.Value) er
 }
 
 func (t *TypeReader[T]) readNonSliceField(v reflect.Value, fi fieldInfo, col string, row []string) (toContinue bool, err error) {
+	// In case of possible nil pointer, we need to create the parent struct instance
 	var parent, grandParent reflect.Value
 	parent, err = v.FieldByIndexErr(fi.index[:len(fi.index)-1])
 	parentForced := false
