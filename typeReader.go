@@ -200,7 +200,7 @@ func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldIn
 		if !info.required && !info.isPrimaryKey {
 			return true, nil
 		}
-		return true, fmt.Errorf("required column %s is not present", col)
+		return true, fmt.Errorf("required column '%s' is not present", col)
 	}
 	var rowVal string
 	if columnExists {
@@ -215,10 +215,10 @@ func (t *TypeReader[T]) setParsedValue(v reflect.Value, col string, info fieldIn
 			return true, nil
 		}
 		//TODO here we have an issue, if struct is not present at all, required shouldn't be taken into consideration
-		return true, newNonIndexedRowError(fmt.Errorf("required column %s is empty", col))
+		return true, newNonIndexedRowError(fmt.Errorf("required column '%s' is empty", col))
 	}
 	if parsed, err := parseStringIntoType(rowVal, v.Type()); err != nil {
-		return false, newNonIndexedRowError(fmt.Errorf("error parsing cell value: %v", err))
+		return false, newNonIndexedRowError(fmt.Errorf("error parsing cell value: %v, column: '%s'", err, col))
 	} else {
 		//TODO wrapper types are not supported
 		if v.Type() == reflect.TypeOf(Date("")) {
