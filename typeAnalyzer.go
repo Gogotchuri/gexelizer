@@ -238,6 +238,9 @@ func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fie
 	}
 	// Get field prefix
 	prefix := getNextFieldPrefix(field, tagOpts.column, currentNode.columnPrefix, typeKind)
+	for i, alias := range tagOpts.aliases {
+		tagOpts.aliases[i] = currentNode.columnPrefix + alias
+	}
 	return fieldInfo{
 		isPrimaryKey: tagOpts.primaryKey,
 		order:        tagOpts.order,
