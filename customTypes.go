@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+type GexValuer interface {
+	GexelizerValue() any
+}
+
 type Date string
 
 func (d Date) String() string {

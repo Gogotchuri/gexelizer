@@ -7,6 +7,7 @@ import (
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/text/encoding/unicode"
 	"io"
+	"time"
 	"unicode/utf8"
 )
 
@@ -15,9 +16,7 @@ type ExcelFileWriter interface {
 	WriteTo(w io.Writer) (int64, error)
 	WriteToBuffer() (*bytes.Buffer, error)
 	SetCellValueOfSheet(sheet, axis string, value any) error
-	SetRowOfSheet(sheet string, row uint, values []any) error
 	SetRow(row uint, values []any) error
-	SetCellValue(axis string, value any) error
 	SetStringRow(row uint, values []string) error
 	RemoveColumn(column string) error
 	GetDefaultSheet() string
@@ -125,22 +124,24 @@ func readExcel(reader io.Reader) (efr ExcelFileReader, err error) {
 	return excel, nil
 }
 
-func (f *excelFile) SetRowOfSheet(sheet string, row uint, values []any) error {
-	return f.file.SetSheetRow(sheet, fmt.Sprintf("A%d", row), values)
-}
-
 func (f *excelFile) SetCellValueOfSheet(sheet, axis string, value any) error {
 	return f.file.SetCellValue(sheet, axis, value)
 }
 func (f *excelFile) SetStringRow(row uint, values []string) error {
 	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), &values)
 }
-func (f *excelFile) SetRow(row uint, values []any) error {
-	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), &values)
-}
 
-func (f *excelFile) SetCellValue(axis string, value any) error {
-	return f.file.SetCellValue(f.GetDefaultSheet(), axis, value)
+var DateTimeFormat = time.RFC3339
+
+func (f *excelFile) SetRow(row uint, values []any) error {
+	for i, v := range values {
+		if gv, ok := v.(GexValuer); ok {
+			values[i] = gv.GexelizerValue()
+		} else if t, ok := v.(time.Time); ok {
+			values[i] = t.Format(DateTimeFormat)
+		}
+	}
+	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), &values)
 }
 
 func (f *excelFile) WriteTo(w io.Writer) (int64, error) {
