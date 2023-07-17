@@ -44,6 +44,18 @@ func WriteExcel[T any](writer io.Writer, data []T, opts ...Options) error {
 	return err
 }
 
+func WriteExcelToBuffer[T any](data []T, opts ...Options) (*bytes.Buffer, error) {
+	tw, err := NewTypeWriter[T](opts...)
+	if err != nil {
+		return nil, err
+	}
+	err = tw.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	return tw.WriteToBuffer()
+}
+
 // NewTypeWriter creates a new TypeWriter[T] instance
 // It returns an error if the type T cannot be written to excel
 // This function is heavier, so it is recommended to create a single instance and reuse it
@@ -78,7 +90,7 @@ func (w *TypeWriter[T]) Write(data []T) (err error) {
 		}
 	}()
 	if len(data) == 0 {
-		return nil
+		return w.writeHeaders() //Write headers only
 	}
 	if w.nextRowToWrite == w.options.HeaderRow {
 		w.nextRowToWrite = w.options.DataStartRow
