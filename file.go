@@ -30,8 +30,9 @@ var _ ExcelFileReader = (*excelFile)(nil)
 var _ ExcelFileReader = (*xlsFile)(nil)
 
 type excelFile struct {
-	file *excelize.File
-	rows [][]string
+	file              *excelize.File
+	rows              [][]string
+	defaultSheetIndex int
 }
 
 type xlsFile struct {
@@ -163,8 +164,12 @@ func (f *excelFile) GetRows(sheet string) ([][]string, error) {
 	return f.file.GetRows(sheet)
 }
 
+func (f *excelFile) SetDefaultSheet(sheet string) {
+	//f.defaultSheetIndex = f.file.GetSheetIndex(sheet) //TODO
+}
+
 func (f *excelFile) GetDefaultSheet() string {
-	return f.file.GetSheetName(0)
+	return f.file.GetSheetName(f.defaultSheetIndex)
 }
 
 func (f *excelFile) GetDefaultSheetRows() ([][]string, error) {
