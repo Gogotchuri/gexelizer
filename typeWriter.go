@@ -56,6 +56,27 @@ func WriteExcelToBuffer[T any](data []T, opts ...Options) (*bytes.Buffer, error)
 	return tw.WriteToBuffer()
 }
 
+func WriteExcelSheet[T any](existingFileWriter ExcelFileWriter, sheetName string, data []T, opts ...Options) (ExcelFileWriter, error) {
+	if existingFileWriter == nil {
+		existingFileWriter = newExcel()
+	}
+	if len(opts) == 0 {
+		opts = append(opts, *DefaultOptions())
+	}
+	opts[0].File = existingFileWriter
+	tw, err := NewTypeWriter[T](opts...)
+	if err != nil {
+		return nil, err
+	}
+	if err := tw.file.SetDefaultSheet(sheetName); err != nil {
+		return nil, err
+	}
+	if err = tw.Write(data); err != nil {
+		return nil, err
+	}
+	return tw.file, nil
+}
+
 // NewTypeWriter creates a new TypeWriter[T] instance
 // It returns an error if the type T cannot be written to excel
 // This function is heavier, so it is recommended to create a single instance and reuse it
@@ -72,11 +93,15 @@ func NewTypeWriter[T any](opts ...Options) (w *TypeWriter[T], err error) {
 	if err := w.analyzeType(); err != nil {
 		return nil, err
 	}
-	w.file = newExcel()
 	if len(opts) > 0 {
 		w.options = &opts[0]
 	} else {
 		w.options = DefaultOptions()
+	}
+	if w.options.File != nil {
+		w.file = w.options.File
+	} else {
+		w.file = newExcel()
 	}
 	w.nextRowToWrite = w.options.HeaderRow
 	return w, nil

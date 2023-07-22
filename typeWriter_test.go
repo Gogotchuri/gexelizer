@@ -136,6 +136,76 @@ func TestTypeWriter_WriteToFile(t *testing.T) {
 	}
 }
 
+func TestTypeWriter_WriteToFileMultiSheet(t *testing.T) {
+	type sliceStruct struct {
+		Position string
+	}
+	type row struct {
+		Name string `gex:"column:name,primary"`
+		SL   []sliceStruct
+		Age  int
+		Date time.Time
+	}
+	type row2 struct {
+		Name   string `gex:"column:name,primary"`
+		SL     []sliceStruct
+		Age    int
+		Height float64
+	}
+	rows1 := []row{
+		{
+			Name: "John",
+			Age:  20,
+			SL:   []sliceStruct{{"A"}, {"B"}},
+		},
+		{
+			Name: "Jane",
+			Age:  21,
+			Date: time.Now(),
+			SL:   []sliceStruct{{"C"}, {"D"}},
+		},
+		{
+			Name: "Jane",
+			Age:  21,
+		},
+	}
+	rows2 := []row2{
+		{
+			Name:   "John",
+			Age:    20,
+			Height: 1.2,
+		},
+		{
+			Name:   "Jane",
+			Age:    21,
+			Height: 1.3,
+		},
+		{
+			Name:   "Jane",
+			Age:    21,
+			SL:     []sliceStruct{{"C"}, {"D"}},
+			Height: 1.4,
+		},
+	}
+
+	writer, err := WriteExcelSheet(nil, "sheet1", rows1, Options{
+		DataStartRow:  5,
+		HeaderRow:     4,
+		TrimEmptyRows: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = WriteExcelSheet(writer, "sheet2", rows2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writer.SaveAs("test.xlsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestTypeWriter_TestOverwriteEmbedded(t *testing.T) {
 	type embType struct {
 		Position string
@@ -314,7 +384,8 @@ func TestTypeWriter_WriteBufferNilOmitempty(t *testing.T) {
 	if excel[0].Name != "John" {
 		t.Fatal("Name should be John")
 	}
-	//TODO: should be nil
+	//TODO: fix this, should be nil, but it gets initialized for the inner field, and never gets set to nil
+	// should scan for references to the field, and set them to nil if the struct fields are all default
 	if excel[0].Address != nil {
 		t.Fatal("Should be nil")
 	}

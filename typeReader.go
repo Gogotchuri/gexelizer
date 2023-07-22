@@ -250,7 +250,7 @@ func (t *TypeReader[T]) analyzeType() (err error) {
 	if t.options.TrimEmptyRows {
 		t.rows = trimEmptyRows(t.rows)
 	}
-	if len(t.rows) < int(t.options.HeaderRow) {
+	if len(t.rows) <= int(t.options.HeaderRow) {
 		return fmt.Errorf("header row is out of bounds")
 	}
 	t.headers = make([]string, len(t.rows[t.options.HeaderRow]))
@@ -325,6 +325,9 @@ func trimEmptyRows(rows [][]string) [][]string {
 			break
 		}
 		trimFromEnd++
+	}
+	if trimFromBeginning+trimFromEnd > len(rows) {
+		return rows
 	}
 	return rows[trimFromBeginning : len(rows)-trimFromEnd]
 }

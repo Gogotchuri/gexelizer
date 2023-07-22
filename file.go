@@ -20,6 +20,8 @@ type ExcelFileWriter interface {
 	SetStringRow(row uint, values []string) error
 	RemoveColumn(column string) error
 	GetDefaultSheet() string
+	SetDefaultSheet(sheet string) error
+	GetBaseFile() *excelize.File
 }
 type ExcelFileReader interface {
 	GetDefaultSheetRows() ([][]string, error)
@@ -33,6 +35,10 @@ type excelFile struct {
 	file              *excelize.File
 	rows              [][]string
 	defaultSheetIndex int
+}
+
+func (f *excelFile) GetBaseFile() *excelize.File {
+	return f.file
 }
 
 type xlsFile struct {
@@ -164,8 +170,18 @@ func (f *excelFile) GetRows(sheet string) ([][]string, error) {
 	return f.file.GetRows(sheet)
 }
 
-func (f *excelFile) SetDefaultSheet(sheet string) {
-	//f.defaultSheetIndex = f.file.GetSheetIndex(sheet) //TODO
+func (f *excelFile) SetDefaultSheet(sheet string) error {
+	index, err := f.file.GetSheetIndex(sheet)
+	if err == nil && index >= 0 {
+		f.defaultSheetIndex = index
+		return nil
+	}
+	index, err = f.file.NewSheet(sheet)
+	if err == nil {
+		f.defaultSheetIndex = index
+		return nil
+	}
+	return err
 }
 
 func (f *excelFile) GetDefaultSheet() string {
