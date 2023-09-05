@@ -6,6 +6,38 @@ import (
 	"time"
 )
 
+func TestExcelize_FileWriter(t *testing.T) {
+	excel := excelize.NewFile()
+	err := excel.SetCellValue("Sheet1", "A1", "test")
+	if err != nil {
+		return
+	}
+	err = excel.SetCellValue("Sheet1", "B1", 100)
+	if err != nil {
+		return
+	}
+	err = excel.SetCellValue("Sheet1", "B1", 100)
+	err = excel.SetCellValue("Sheet1", "C1", 100)
+	err = excel.SetCellValue("Sheet1", "K1", 100)
+	if err != nil {
+		return
+	}
+	if err != nil {
+		return
+	}
+	if err != nil {
+		return
+	}
+	err = excel.SetCellValue("Sheet1", "C1", time.Now())
+	if err != nil {
+		return
+	}
+	err = excel.SaveAs("test.xlsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestExcel_WriteBasic(t *testing.T) {
 	type row struct {
 		Name string
@@ -26,6 +58,10 @@ func TestExcel_WriteBasic(t *testing.T) {
 		Name: "Jane",
 		Age:  21,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writer.WriteToFile("test.xlsx")
 	if err != nil {
 		t.Fatal(err)
 	}
