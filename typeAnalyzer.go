@@ -58,7 +58,7 @@ func (info typeInfo) containsSlice() bool {
 }
 
 func (info typeInfo) sortColumns() {
-	sort.Slice(info.orderedColumns, func(a, b int) bool {
+	sort.SliceStable(info.orderedColumns, func(a, b int) bool {
 		nameA := info.orderedColumns[a]
 		nameB := info.orderedColumns[b]
 		infoA := info.nameToField[nameA]
