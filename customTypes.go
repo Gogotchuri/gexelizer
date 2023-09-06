@@ -14,6 +14,11 @@ type Date string
 func (d Date) String() string {
 	return string(d)
 }
+
+func (d Date) GexelizerValue() any {
+	return string(d)
+}
+
 func (d Date) ToTime() (time.Time, error) {
 	timeFormats := []string{
 		"2006-01-02",

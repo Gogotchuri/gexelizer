@@ -146,36 +146,39 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 				}
 				info.primaryKeyName = strings.ToLower(fi.name)
 			}
-
-			if fi.kind == kindSlice {
-				if encounteredSlice {
-					return typeInfo{}, fmt.Errorf("only one slice is allowed")
-				}
-				encounteredSlice = true
-				info.sliceFieldInfo = &fi
-				t := field.Type.Elem()
-				if t.Kind() == reflect.Ptr {
-					t = t.Elem()
-				}
-				if t.Kind() == reflect.Struct {
+			//In case it implement stringer or gexValuer we can use the value without further decomposition
+			canBeUsedFlat := typeImplements[fmt.Stringer](field.Type) || typeImplements[GexValuer](field.Type)
+			if !canBeUsedFlat {
+				if fi.kind == kindSlice {
+					if encounteredSlice {
+						return typeInfo{}, fmt.Errorf("only one slice is allowed")
+					}
+					encounteredSlice = true
+					info.sliceFieldInfo = &fi
+					t := field.Type.Elem()
+					if t.Kind() == reflect.Ptr {
+						t = t.Elem()
+					}
+					if t.Kind() == reflect.Struct {
+						queue = append(queue, toTraverse{
+							t:            t,
+							indexPrefix:  fi.index,
+							columnPrefix: fi.nextPrefix,
+						})
+					}
+					continue
+				} else if fi.kind == kindStruct || fi.kind == kindStructPtr {
+					t := field.Type
+					if fi.kind == kindStructPtr {
+						t = t.Elem()
+					}
 					queue = append(queue, toTraverse{
 						t:            t,
 						indexPrefix:  fi.index,
 						columnPrefix: fi.nextPrefix,
 					})
+					continue
 				}
-				continue
-			} else if fi.kind == kindStruct || fi.kind == kindStructPtr {
-				t := field.Type
-				if fi.kind == kindStructPtr {
-					t = t.Elem()
-				}
-				queue = append(queue, toTraverse{
-					t:            t,
-					indexPrefix:  fi.index,
-					columnPrefix: fi.nextPrefix,
-				})
-				continue
 			}
 			lowerName := strings.TrimSpace(strings.ToLower(fi.name))
 			if existingFI, ok := info.nameToField[lowerName]; ok {
@@ -218,6 +221,12 @@ func analyzeStruct(t reflect.Type) (typeInfo, error) {
 	}
 	info.sortColumns()
 	return info, nil
+}
+
+func typeImplements[I any](t reflect.Type) bool {
+	zeroT := reflect.Zero(t).Interface()
+	_, ok := zeroT.(I)
+	return ok
 }
 
 func analyzeField(field reflect.StructField, currentNode toTraverse, i int) (fieldInfo, error) {

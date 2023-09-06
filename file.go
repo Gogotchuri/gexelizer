@@ -146,6 +146,8 @@ func (f *excelFile) SetRow(row uint, values []any) error {
 			values[i] = gv.GexelizerValue()
 		} else if t, ok := v.(time.Time); ok {
 			values[i] = t.Format(DateTimeFormat)
+		} else if t, ok := v.(fmt.Stringer); ok {
+			values[i] = t.String()
 		}
 	}
 	return f.file.SetSheetRow(f.GetDefaultSheet(), fmt.Sprintf("A%d", row), &values)
