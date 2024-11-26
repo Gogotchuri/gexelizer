@@ -58,7 +58,7 @@ func WriteExcelToBuffer[T any](data []T, opts ...Options) (*bytes.Buffer, error)
 
 func WriteExcelSheet[T any](existingFileWriter ExcelFileWriter, sheetName string, data []T, opts ...Options) (ExcelFileWriter, error) {
 	if existingFileWriter == nil {
-		existingFileWriter = newExcel()
+		existingFileWriter = NewExcelizeWriter()
 	}
 	if len(opts) == 0 {
 		opts = append(opts, *DefaultOptions())
@@ -101,7 +101,7 @@ func NewTypeWriter[T any](opts ...Options) (w *TypeWriter[T], err error) {
 	if w.options.File != nil {
 		w.file = w.options.File
 	} else {
-		w.file = newExcel()
+		w.file = NewExcelizeWriter()
 	}
 	w.nextRowToWrite = w.options.HeaderRow
 	return w, nil

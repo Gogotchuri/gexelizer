@@ -75,7 +75,7 @@ func (f *excelFile) RemoveColumn(column string) error {
 	return f.file.RemoveCol(f.GetDefaultSheet(), column)
 }
 
-func newExcel() ExcelFileWriter {
+func NewExcelizeWriter() ExcelFileWriter {
 	return &excelFile{
 		file: excelize.NewFile(),
 	}
